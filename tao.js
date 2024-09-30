@@ -1,5 +1,4 @@
 const fs = require('fs')
-const chalk = require('chalk')
 
 global.gr = 'https://wa.me/6283129109022?text=bang+aku+mau+donasi+i+love+yuuu'
 global.ig = 'https://instagram/boedzhhttps://www.instagram.com/boedzhanks.store/' // ubah aja
@@ -23,10 +22,10 @@ global.zenz = 'zenzkey_41b4fe7a5d' // https://api.zahwazein.xyz
 global.keyopenai = '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'
 //====================BY Hw Mods=============================//
 global.botname = 'Hupao' //ubah jadi nama bot mu, note tanda ' gausah di hapus!
-global.packname = 'Boedzhanks' // ubah aja ini nama sticker
+global.packname = '𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ by Boedzhanks' // ubah aja ini nama sticker
 global.ta = '•' //cuma simbol
 global.author = '' // ubah aja ini nama sticker
-global.prefa = ['','!','.',',','🐤','🗿']
+global.prefa = ['!','.','#','🐤','🗿']
 global.sessionName = 'session' //Gausah Juga
 global.sp = '⭔' // Gausah Juga
 global.wlcm = []
@@ -50,10 +49,9 @@ global.mess = {
     wait: 'Lu olang tunggu bentar loo',
     endLimit: 'Lu olang punya limit sudah abis, tunggu jam 12 malam untuk reset',
     error: '*Fitur Error!!!*',
-    prem : 'Fitur ini buat _*Member Premium*_ loo'
+    prem : 'Fitur ini buat khusus premium\n\nJika ingin menjadi premium cukup follow ig admin @boedzhanks.store dan kirim ssnya ke owner dengan cara ketik .owner'
 }
 //=================================================//
-//Gausah Juga
 global.limitawal = {
     premium: "Infinity",
     free: 100
@@ -63,7 +61,7 @@ global.limitawal = {
 let file = require.resolve(__filename)
 fs.watchFile(file, () => {
 	fs.unwatchFile(file)
-	console.log(chalk.redBright(`Update'${__filename}'`))
+	console.log(`Update'${__filename}'`)
 	delete require.cache[file]
 	require(file)
 })

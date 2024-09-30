@@ -4,30 +4,34 @@ require('./lib/taomenu.js')
 const { WA_DEFAULT_EPHEMERAL, getAggregateVotesInPollMessage, generateWAMessageFromContent, proto, generateWAMessageContent, generateWAMessage, prepareWAMessageMedia, downloadContentFromMessage, areJidsSameUser, getContentType } = require("@whiskeysockets/baileys")
 const fs = require('fs')
 const util = require('util')
-const chalk = require('chalk')
 const os = require('os')
 const axios = require('axios')
 const speed = require('performance-now')
+const FormData = require('form-data')
 const fsx = require('fs-extra')
 const crypto = require('crypto')
+const cheerio = require('cheerio');
 const ffmpeg = require('fluent-ffmpeg')
 const moment = require('moment-timezone')
-const { JSDOM } = require('jsdom')
-const { apikey } = require('./apikey.json')
-const { color, bgcolor } = require('./lib/color.js')
-const { uptotelegra } = require('./lib/upload.js')
-const { generateProfilePicture } = require('./lib/myfunc.js')
 const { Primbon } = require('scrape-primbon')
 const primbon = new Primbon()
-const hxz = require('hxz-api')
+const path = require('path')
+const im = require('imagemagick')
+const { JSDOM } = require('jsdom')
+const { uptotelegra } = require('./lib/upload.js')
+const { generateProfilePicture } = require('./lib/myfunc.js')
+const tiktok = require('./lib/tiktok2.js')
 const youtube = require("yt-search");
 const ytdl = require("ytdl-core")
 const dylux = require(`api-dylux`)
-const { Configuration, OpenAIApi } = require('openai')
+const fb = require('boedzhanks-fbdownload')
+const saucenao = require("sagiri");
+const saucenaoapi = saucenao("074a1f1a40e94436de37232d4e9f9d70afcdb90e");
+const { ndown, twitterdown, GDLink, capcut, alldown } = require("nayan-media-downloader")
 const { exec, spawn, execSync } = require("child_process")
-const { smsg, tanggal, getTime, isUrl, sleep, clockString, runtime, fetchJson, getBuffer, fetchBuffer, jsonformat, format, parseMention, getRandom,formatp, getGroupAdmins } = require('./lib/myfunc.js')
+const { smsg, tanggal, getTime, isUrl, sleep, clockString, runtime, fetchJson, getBuffer, fetchBuffer, jsonformat, format, parseMention, getRandom,formatp, getGroupAdmins, timeWait } = require('./lib/myfunc.js')
 const { FajarNews, BBCNews, metroNews, CNNNews, iNews, KumparanNews, TribunNews, DailyNews, DetikNews, OkezoneNews, CNBCNews, KompasNews, SindoNews, TempoNews, IndozoneNews, AntaraNews, RepublikaNews, VivaNews, KontanNews, MerdekaNews, KomikuSearch, AniPlanetSearch, KomikFoxSearch, KomikStationSearch, MangakuSearch, KiryuuSearch, KissMangaSearch, KlikMangaSearch, PalingMurah, LayarKaca21, AminoApps, Mangatoon, WAModsSearch, Emojis, CoronaInfo, JalanTikusMeme,Cerpen, Quotes, Couples, Darkjokes } = require("dhn-api");
-const db_user = JSON.parse(fs.readFileSync('./base/user.json'))
+const db_user = JSON.parse(fs.readFileSync('./database/user.json'))
 //=================================================/
 
 global.db.data = JSON.parse(fs.readFileSync('./src/database.json'))
@@ -76,9 +80,12 @@ const antiviewonce = JSON.parse(fs.readFileSync('./lib/antiviewonce.json'));
 const zipnye = JSON.parse(fs.readFileSync('./database/zip.json'))
 const apknye = JSON.parse(fs.readFileSync('./database/apk.json'))
 const ntilink = JSON.parse(fs.readFileSync("./lib/antilink.json"))
+const gcmute = JSON.parse(fs.readFileSync("./lib/mute.json"))
 const antidel = JSON.parse(fs.readFileSync("./lib/antidel.json"))
 const banned = JSON.parse(fs.readFileSync('./base/dbnye/banned.json'))
 const { getRegisteredRandomId, addRegisteredUser, createSerial, checkRegisteredUser } = require('./database/register.js')
+const { stubFalse, result } = require('lodash')
+const { errorMonitor } = require('events')
 const isRegistered = checkRegisteredUser(m.sender)
 //=================================================//
 module.exports = hupao = async (hupao, m, chatUpdate, setting, store) => {
@@ -114,14 +121,14 @@ const isAdmins = m.isGroup ? groupAdmins.includes(m.sender) :''
 const prem = JSON.parse(fs.readFileSync('./base/dbnye/premium.json'))
 const welcm = m.isGroup ? wlcm.includes(from) : false
 const welcmm = m.isGroup ? wlcmm.includes(from) : false
-const AntiLink = m.isGroup ? ntilink.includes(from) : false 
+const AntiLink = m.isGroup ? ntilink.includes(from) : false
+const groupMute = m.isGroup ? gcmute.includes(from) : false 
 const autodelete = from && isCmd ? antidel.includes(from) : false 
 const isBan = banned.includes(m.sender)
 const isUser = pengguna.includes(m.sender)
 const content = JSON.stringify(m.message)
 const numberQuery = text.replace(new RegExp("[()+-/ +/]", "gi"), "") + "@s.whatsapp.net"
 const mentionByTag = m.mtype == "extendedTextMessage" && m.message.extendedTextMessage.contextInfo != null ? m.message.extendedTextMessage.contextInfo.mentionedJid : []
-const Input = mentionByTag[0] ? mentionByTag[0] : q ? numberQuery : false
 const time = moment(Date.now()).tz('Asia/Jakarta').locale('id').format('HH:mm:ss z')
 const jam = moment().format("HH:mm:ss z")
 let dt = moment(Date.now()).tz('Asia/Jakarta').locale('id').format('a')
@@ -130,6 +137,7 @@ const hariini = moment.tz('Asia/Jakarta').format('dddd, DD MMMM YYYY')
 const ucapanWaktu = fildt.charAt(0).toUpperCase() + fildt.slice(1)
 const qtod = m.quoted? "true":"false"
 const isPrem = prem.includes(m.sender)
+const isOwner = owner.includes(m.sender)
 //=================================================//}
 const cap = 'Boedzhanks'
 const kalgans = { 
@@ -149,7 +157,7 @@ participant: `0@s.whatsapp.net`, ...(from ? { remoteJid: "0@s.whatsapp.net" } : 
 							"buttons": [
 								{
 									"name": "review_and_pay",
-									"buttonParamsJson": "{\"currency\":\"IDR\",\"external_payment_configurations\":[{\"uri\":\"\",\"type\":\"payment_instruction\",\"payment_instruction\":\"hey ini test\"}],\"payment_configuration\":\"\",\"payment_type\":\"\",\"total_amount\":{\"value\":2500000,\"offset\":100},\"reference_id\":\"4MX98934S0D\",\"type\":\"physical-goods\",\"order\":{\"status\":\"pending\",\"description\":\"\",\"subtotal\":{\"value\":2500000,\"offset\":100},\"items\":[{\"retailer_id\":\"6283129109022\",\"product_id\":\"685731947500\",\"name\":\"boedzhanks\",\"amount\":{\"value\":2500000,\"offset\":100},\"quantity\":1}]}}"
+									"buttonParamsJson": "{\"currency\":\"IDR\",\"external_payment_configurations\":[{\"uri\":\"\",\"type\":\"payment_instruction\",\"payment_instruction\":\"hey ini test\"}],\"payment_configuration\":\"\",\"payment_type\":\"\",\"total_amount\":{\"value\":2500000,\"offset\":100},\"reference_id\":\"4MX98934S0D\",\"type\":\"physical-goods\",\"order\":{\"status\":\"pending\",\"description\":\"\",\"subtotal\":{\"value\":2500000,\"offset\":100},\"items\":[{\"retailer_id\":\"6283129109022\",\"product_id\":\"685731947500\",\"name\":\"Boedzhanks\",\"amount\":{\"value\":2500000,\"offset\":100},\"quantity\":1}]}}"
 								}
 							]
 			}
@@ -176,7 +184,7 @@ participant: `0@s.whatsapp.net`, ...(from ? { remoteJid: "status@broadcast" } : 
 "mediaKeyTimestamp": "1684161893"
 }}}
 const reply = (teks) => {
-return hupao.sendMessage(from, { text: teks, contextInfo:{"externalAdReply": {"title": `Aku Sayang ${botname}🥰`,"body": `Selamat ${ucapanWaktu} kak ${pushname}`, mediaType: 1, renderLargerThumbnail: true, "previewType": "PHOTO","thumbnailUrl": 'https://telegra.ph/file/984ec7737ca62fc16e87e.jpg',"thumbnail": thumb,"sourceUrl": `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`}}}, { quoted:m})} 
+return hupao.sendMessage(from, { text: teks, contextInfo:{"externalAdReply": {"title": `𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ by Boedzhanks `,"body": `Selamat ${ucapanWaktu} kak ${pushname}`, mediaType: 1, renderLargerThumbnail: true, "previewType": "PHOTO","thumbnailUrl": 'https://telegra.ph/file/984ec7737ca62fc16e87e.jpg',"thumbnail": thumb,"sourceUrl": `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`}}}, { quoted:m})} 
 
 const errorReply = (teks) => {
         return hupao.sendMessage(from, {text: teks,  contextInfo: {
@@ -226,7 +234,7 @@ function pickRandom(list) {
 return list[Math.floor(Math.random() * list.length)]
 }
 
-const ftroli ={key: {fromMe: false,"participant":"0@s.whatsapp.net", "remoteJid": "status@broadcast"}, "message": {orderMessage: {itemCount: 2022,status: 200, thumbnail: thum, surface: 200, message: botname, orderTitle: ownername, sellerJid: '0@s.whatsapp.net'}}, contextInfo: {"forwardingScore":999,"isForwarded":true},sendEphemeral: true}
+const ftroli ={key: {fromMe: false,"participant":"0@s.whatsapp.net", "remoteJid": "status@broadcast"}, "message": {orderMessage: {itemCount: 2024,status: 200, thumbnail: thum, surface: 200, message: botname, orderTitle: ownername, sellerJid: '0@s.whatsapp.net'}}, contextInfo: {"forwardingScore":999,"isForwarded":true},sendEphemeral: true}
 		const fdoc = {key : {participant : '0@s.whatsapp.net', ...(m.chat ? { remoteJid: `status@broadcast` } : {}) },message: {documentMessage: {title: botname,jpegThumbnail: thum}}}
 		const fvn = {key: {participant: `0@s.whatsapp.net`, ...(m.chat ? { remoteJid: "status@broadcast" } : {})},message: { "audioMessage": {"mimetype":"audio/ogg; codecs=opus","seconds":359996400,"ptt": "true"}} } 
 		const fgif = {key: {participant: `0@s.whatsapp.net`, ...(m.chat ? { remoteJid: "status@broadcast" } : {})},message: {"videoMessage": { "title":botname, "h": ofc,'seconds': '359996400', 'gifPlayback': 'true', 'caption': ownername, 'jpegThumbnail': good}}}
@@ -242,7 +250,7 @@ const downloadMp3 = async (Link) => {
 try {
 await ytdl.getInfo(Link)
 let mp3File = getRandom('.mp3')
-console.log(color('Download Audio With ytdl-core'))
+console.log('Download Audio With ytdl-core')
 ytdl(Link, { filter: 'audioonly' })
 .pipe(fs.createWriteStream(mp3File))
 .on('finish', async () => {
@@ -258,7 +266,7 @@ const downloadMp4 = async (Link) => {
 try {
 await ytdl.getInfo(Link)
 let mp4File = getRandom('.mp4')
-console.log(color('Download Video With ytdl-core'))
+console.log('Download Video With ytdl-core')
 let nana = ytdl(Link)
 .pipe(fs.createWriteStream(mp4File))
 .on('finish', async () => {
@@ -288,19 +296,19 @@ fs.writeFileSync('./database/command.json',JSON.stringify(_db, null, 2));
 }
      
 async function loading () {
-var taaofc = [
-    "《 █▒▒▒▒▒▒▒▒▒▒▒》10%",
-    "《 ████▒▒▒▒▒▒▒▒》30%",
-    "《 ███████▒▒▒▒▒》50%",
-    "《 ██████████▒▒》80%",
-    "《 ████████████》100%",
- 'Loading Completed!'
+var taoo = [
+    "█▒▒▒▒▒▒▒▒▒▒▒ 10%",
+    "████▒▒▒▒▒▒▒▒ 30%",
+    "███████▒▒▒▒▒ 50%",
+    "██████████▒▒ 80%",
+    "████████████ 100%",
+ 'Loading Completed!\n\nTunggu Sebentar'
 ]
-let { key } = await hupao.sendMessage(from, {text: 'ʟᴏᴀᴅɪɴɢ...'})//Awalan
+let { key } = await hupao.sendMessage(from, {text: 'Loading...'})//Awalan
 
-for (let i = 0; i < taaofc.length; i++) {
+for (let i = 0; i < taoo.length; i++) {
 /*await delay(10)*/
-await hupao.sendMessage(from, {text: taaofc[i], edit: key });//setelah nya
+await hupao.sendMessage(from, {text: taoo[i], edit: key });//setelah nya
 }
 }
 if (autodelete) {
@@ -337,11 +345,11 @@ await hupao.setStatus(`I'm Hupao 🤖 | ${runtime(process.uptime())} ⏰ | Statu
 settingstatus = new dt() * 1
 }
      }*/
-let rn = ['recording']
+let rn = ['composing']
 let jd = rn[Math.floor(Math.random() * rn.length)];
 if (m.message) {
 hupao.sendPresenceUpdate(jd, from)
-console.log(chalk.black(chalk.bgWhite('[ PESAN ]')), chalk.black(chalk.bgGreen(new Date)), chalk.black(chalk.bgBlue(budy || m.mtype)) + '\n' + chalk.magenta('=> Dari'), chalk.green(pushname), chalk.yellow(m.sender) + '\n' + chalk.blueBright('=> Di'), chalk.green(m.isGroup ? pushname : 'Private Chat', from))
+console.log('[ PESAN ] ' + (new Date) + (budy || m.mtype) + '\n' + '=> Dari ' + (pushname) + (m.sender) + '\n' + '=> Di ' + (m.isGroup ? pushname : 'Private Chat', from))
 }
 if (isCmd && !isUser) {
 pengguna.push(sender)
@@ -357,6 +365,7 @@ let isgclink = isLinkThisGc.test(m.text)
 if (isgclink) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Group Link Terdeteksi 」\`\`\`\n\nAnda tidak akan ditendang oleh bot karena yang Anda kirim adalah link ke grup ini`})
 if (isAdmins) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Group Link Terdeteksi 」\`\`\`\n\nAdmin sudah mengirimkan link, admin bebas memposting link apapun`})
 if (isCreator) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Group Link Terdeteksi 」\`\`\`\nOwner telah mengirim link, owner bebas memposting link apa pun`})
+if (isOwner) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Group Link Terdeteksi 」\`\`\`\nOwner telah mengirim link, owner bebas memposting link apa pun`})
 await hupao.sendMessage(m.chat,
 {
 delete: {
@@ -742,6 +751,7 @@ user.afkReason = ''
 //=================================================//
 switch(command) {
         case 'daftar':
+                if (groupMute) return 'error'
                 if (isRegistered) return errorReply ('Kamu sudah terdaftar')
                 if (!q.includes('|')) return errorReply ('Format salah!')
                 const namaUser = q.substring(0, q.indexOf('|') - 0)
@@ -751,7 +761,7 @@ switch(command) {
                 if (namaUser.length >= 30) return errorReply (`Namamu terlalu panjang`)
                 if (umurUser > 50) return errorReply (`Dasar tua, kamu terlalu tua!!`)
                 if (umurUser < 12) return errorReply (`Dasar bocil, kamu terlalu kecil!!`)
-				mzd = `Kamu telah terdaftar dengan informasi sebagai berikut:\n\n⭔ Nama : ${namaUser}\n⭔ Umur : ${umurUser}\n⭔ Nomor : wa.me/${m.sender.split("@")[0]}\n⭔ NS : ${serialUser}`
+				mzd = `Kamu telah terdaftar dengan informasi sebagai berikut:\n\n❏ Nama : ${namaUser}\n❏ Umur : ${umurUser}\n❏ Nomor : wa.me/${m.sender.split("@")[0]}\n❏ NS : ${serialUser}`
                 veri = m.sender
                 if (!m.isGroup) {
                     addRegisteredUser(m.sender, namaUser, umurUser, serialUser)
@@ -765,10 +775,38 @@ switch(command) {
 		break   
 case "menu":
        case "help":
+        if (groupMute) return 'error'
        await loading()
        let menuu = `
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
 Hallo Kak ${pushname} 👋
 Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
+
 ${menu}`;
      hupao.sendMessage(from, { video: vidmenu, gifPlayback: true, caption: menuu, contextInfo:{ externalAdReply: {
 title: botname,
@@ -781,71 +819,42 @@ sourceUrl: `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`,
 }}}, { quoted: fkontak })
         
 break
-    /*case 'ytmp4' : case 'ytv' : case 'ytvideo': { 
-       if(!q) return errorReply(`mana linknya`)
-       await loading()
-dylux.ytmp4(q).then( data => {
-hupao.sendMessage(from, { video: { url: data.dl_url }, caption: data.title })
-})
-}
-break*/
 
-
-case 'twitdl' : case 'twit' : case 'twitvideo': { 
-    if(!q) return errorReply(`mana linknya`)
-    await loading()
-dylux.twitter(q).then( data => {
-hupao.sendMessage(from, { video: { url: data.HD }, caption: data.desc })
-})
-}
-break
-
-case 'fbdl' : case 'fb' : case 'fbvideo': { 
-    if(!q) return errorReply(`mana linknya`)
-    await loading()
-dylux.fbdl(q).then( data => {
-    const tex = `
-    [ FACEBOOK DL ]\n\nTitle: ${data.title}`;
-hupao.sendMessage(from, { video: { url: data.videoUrl }, caption: tex })
-})
-}
-break
-
-case "simple":
-       case "simpel":
-       
-       await loading()
-       let taasimpel = `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝙲𝚛𝚎𝚊𝚝𝚘𝚛 : ${ownername}
-┆ ☂︎ 𝚄𝚙𝚝𝚒𝚖𝚎 : ⏳ ${runtime(process.uptime())}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
-${simpel}`; hupao.sendMessage(from, { video: vidmenu, gifPlayback: true, caption: taasimpel, contextInfo:{ externalAdReply: {
-title: botname,
-body: `Jangan di spam🙃`,
-thumbnail: thum,
-mediaType: 1,
-thumbnailUrl: "",
-renderLargerThumbnail: true,
-sourceUrl: `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`,
-}}}, { quoted: fkontak })
-       break
 case "all":
        case "allmenu":
        case "taall":
+        if (groupMute) return 'error'
     //   if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
        await loading()
        let hupaoall = `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time}
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${taall}`; hupao.sendMessage(from, { video: vidmenu, gifPlayback: true, caption: hupaoall, contextInfo:{ externalAdReply: {
 title: botname,
@@ -860,6 +869,7 @@ sourceUrl: `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`,
        
 case "script": 
       case "sc":
+        if (groupMute) return 'error'
  hupao.relayMessage(m.chat, {
                 "requestPaymentMessage": {
                     amount: {
@@ -881,8 +891,7 @@ Selamat ${ucapanWaktu}
 
 
  _Unduh Script Ini Melalui Tautan Dibawah Ini_
- *_https://t.me/Boedzhanks_*
- *_https://wa.me/6283129109022_*
+ *_https://github.com/boedzhanks/Hupao_*
 •-------------------------------------------------•`
                         }
                     },
@@ -891,6 +900,7 @@ Selamat ${ucapanWaktu}
             }, {})
 break
         case 'jodoh': {
+            if (groupMute) return 'error'
             if (!m.isGroup) return m.reply('khusus grup oyy')
             let member = participants.map(u => u.id)
             let me = m.sender
@@ -918,43 +928,66 @@ isForwarded: true,
  
 //=================================================//
 case 'ownermenu': {
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
 await loading()
 const owned = `${owner}@s.whatsapp.net`
 const version = 2
-const text12 =
-`┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+const text12 =`
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${ownermenu} `
 hupao.sendMessage(from, { text: text12, contextInfo: { mentionedJid: [sender, owned], forwardingScore: 9999, isForwarded: true }}, { quoted: fkontak })
 }
 break
 case "tqto": 
+if (groupMute) return 'error'
  const owned = `${owner}@s.whatsapp.net`
 const version = 2
 const text12 = `*Hi ${pushname}👋*
 
 ▭▬▭▬▭▬▭▬▭▬▭▬▭▬
 「 *BOT INFO* 」
-⭔Nama Creator : *Boedzhanks*
-⭔Nomor Creator : *@${owned.split("@")[0]}*
-⭔Nama Script : *Hupao*
-⭔Versi Script : *1.0.0*
-⭔Botz Name : *Hupao*
-⭔Type Baileys : *Case*
+❏ Nama Creator : *Boedzhanks*
+❏ Nomor Creator : *wa.me/6283129109022*
+❏ Nama Script : *Hupao*
+❏ Versi Script : *1.0.0*
+❏ Botz Name : *Hupao*
+❏ Type Baileys : *Case*
 ▭▬▭▬▭▬▭▬▭▬▭▬▭▬
 
 *Thanks To*
 
-⭔ Hw Mods
-⭔ Boedzhanks (Gw Sendiri)
-⭔ Temen Temen Gw
+❏ Hw Mods
+❏ Boedzhanks (Gw Sendiri)
+❏ Temen Temen Gw
 
 Powered By *@${owned.split("@")[0]}*
 ▬▭▬▭▬▭▬▭▬▭▬▭▬`
@@ -975,24 +1008,40 @@ await hupao.sendMessage(m.chat, {audio: fs.readFileSync('./audio.mp3'),mimetype:
 
 break
 case "sosmed": 
- reply( `*Hi ${pushname}👋*
+if (groupMute) return 'error'
+ tex = `*Hi ${pushname}👋*
 
 *_Social Media_*
-*IG : ▣https://www.instagram.com/boedzhanks*
-*FB : ▣https://www.facebook.com/boedzhanks.store*
-*GH : ▣https://github.com/Boedzhanks*
-*WA : ▣https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D*
+*❏ Instagram*
+> https://www.instagram.com/boedzhanks.store
+*❏ Facebook*
+> https://www.facebook.com/boedzhanks.store
+*❏ Github*
+> https://github.com/Boedzhanks
+*❏ Tiktok*
+> https://tiktok.com/@boedzhanks
+*❏ Whatsapp*
+> https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D
 
 
 Powered By Boedzhanks
-▬▭▬▭▬▭▬▭▬▭▬▭▬`)
+▬▭▬▭▬▭▬▭▬▭▬▭▬`
+await hupao.sendMessage(from, { video: vidmenu, gifPlayback: true, caption: tex, contextInfo:{ externalAdReply: {
+    title: botname,
+    body: `Bantu Follow ya Kak🙃`,
+    thumbnail: thum,
+    mediaType: 1,
+    thumbnailUrl: "",
+    renderLargerThumbnail: true,
+    sourceUrl: `https://chat.whatsapp.com/Lhw9jBIZnBDF7wkEcwyZ1D`,
+    }}}, { quoted: fkontak })
 await hupao.sendMessage(m.chat, {audio: fs.readFileSync('./audio.mp3'),mimetype: 'audio/mpeg',ptt: true}, {quoted:m})
 
 break
 
 case "donasi": 
       case "donate": 
-              
+              if (groupMute) return 'error'
  hupao.relayMessage(m.chat, {
                 "requestPaymentMessage": {
                     amount: {
@@ -1026,83 +1075,268 @@ case "donasi":
 break
 //=================================================//
 case 'animemenu': {
+    if (groupMute) return 'error'
     //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
         await loading()
     reply(`
-    ┏––––––––––✦
-    ┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-    ┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-    ┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-    ┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-    ┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-    ┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
     
     ${animemenu}`)
     }
     break
 //=================================================//
 case 'groupmenu': {
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
     await loading()
 reply(`
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${groupmenu}`)
 }
 break
 //=================================================//
 case 'tools': case 'tool': {
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
      await loading()
 reply(`
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${tools} `)
 }
 break
 //=================================================//
+case 'tools': case 'tool': {
+    if (groupMute) return 'error'
+//if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
+     await loading()
+reply(`
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
+
+${tools} `)
+}
+break//=================================================//
+case 'downloadmenu': case 'download': {
+    if (groupMute) return 'error'
+//if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
+     await loading()
+reply(`
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
+
+${downloadmenu} `)
+}
+break
+//=================================================//
  case 'randommenu': {
+    if (groupMute) return 'error'
  //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
     await loading()
 reply(`
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${randommenu}`)
 }
 break
 //=================================================//
 case 'textmaker':
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
 await loading()
 let foottggkzo = `Runtime : ⏳ ${runtime(process.uptime())}
 Jam : ${time}`
 sendGeekzMessage(from, { 
 text: `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${textmaker}`,
 mentions:[sender],
@@ -1123,20 +1357,42 @@ mentionedJid:[sender],
 break
 //=================================================//
 case 'infomenu':
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
-   if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+   if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 let footgkzoo = `Runtime : ⏳ ${runtime(process.uptime())}
 Jam : ${time}`
 sendGeekzMessage(from, { 
 text: `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${infomenu}
 `,
@@ -1161,15 +1417,38 @@ break
         //
         
        case 'addmenu':
+        if (groupMute) return 'error'
      //  if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
-     if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-reply(`┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+     if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
+reply(`
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${addmenu} `)
 break
@@ -1177,19 +1456,41 @@ break
 
         //=========================================//
 case 'funmenu':
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
-     if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 let fooutgkzz = `Runtime : ⏳ ${runtime(process.uptime())}
 Jam : ${time}`
 sendGeekzMessage(from, { 
 text: `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${funmenu}
 `,
@@ -1211,19 +1512,41 @@ mentionedJid:[sender],
 break
 //=================================================
 case 'gamemenu':
+    if (groupMute) return 'error'
 //if (!isRegistered) return replyMsg('Kamu belum daftar!\nSilahkan daftar dengan cara *.daftar nama.umur!*')
-      if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+      if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 let fooutgdhsikzz = `Runtime : ⏳ ${runtime(process.uptime())}
 Jam : ${time}`
 sendGeekzMessage(from, { 
 text: `
-┏––––––––––✦
-┆ ☂︎ 𝙱𝚘𝚝 𝙽𝚊𝚖𝚎 : Hupao
-┆ ☂︎ 𝚄𝚜𝚎𝚛 : ${pushname}
-┆ ☂︎ 𝙿𝚛𝚎𝚖𝚒𝚞𝚖 : ${isPrem ? '✅' : '❎'}
-┆ ☂︎ 𝚃𝚐𝚕: ${hariini}
-┆ ☂︎ 𝙹𝚊𝚖: ${time} WIB
-┗––––––––––✦
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║    『 Hupao by Boedzhanks 』
+╙╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+    بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
+
+Hallo Kak ${pushname} 👋
+Selamat ${ucapanWaktu} 😊
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║        Information
+║ Bot Name : Hupao
+║ Owner : ${ownername}
+║ Daftar User : *${("id", db_user).length}*
+║ Type Baileys : *Case*
+║ Versi Bot : *1.0.0*
+║ Nomor Bot : *wa.me/447389671237*
+║ ${runtime(process.uptime())}
+║ ${hariini}
+║ ${time} WIB
+╙╼━━━━━━━━━━━━━━━❆
+
+╓╼━━━━━━❲ 𝓱𝓾𝓹𝓪𝓸 ᵇᵒᵗ ❳━━━━━━━❆
+║       Social Media
+║ Instagram : @boedzhanks.store
+║ Facebook : Hardiansyah Ramadhani
+║ Tiktok : @boedzhanks
+║ Discord : Boedzhanks#0001
+╙╼━━━━━━━━━━━━━━━❆
 
 ${gamemenu}
 `,
@@ -1246,6 +1569,7 @@ break
         
 //=================================================/
 case "createqr": {
+    if (groupMute) return 'error'
 const qrcode = require('qrcode')
     if (!text) return errorReply(`Penggunaan Salah Harusnya ${prefix+command} bujank`)
 const qyuer = await qrcode.toDataURL(text, { scale: 8 })
@@ -1254,6 +1578,7 @@ hupao.sendMessage(from, { image: data, caption: `Sukses Kak` }, { quoted: kalgan
 }
 break
 case "detectqr": {
+    if (groupMute) return 'error'
 try {
 mee = await hupao.downloadAndSaveMediaMessage(quoted)
 mem = await uptotelegra(mee)
@@ -1266,8 +1591,9 @@ reply(`Reply Image Yang Ada Qr Nya`)
 }
 break
         case 'pppanjang': case 'setppbot2':{
+            if (groupMute) return 'error'
 if (isBan) return errorReply('Lu di ban kocak awokwok') 
-if (!isCreator) return errorReply('Fitur Khusus owner!')
+if (!isOwner) return errorReply('Fitur Khusus owner!')
 if (!quoted) return errorReply(`Reply foto dgn caption ${prefix + command}`)
 if (!/image/.test(mime)) return errorReply(`Reply foto dgn caption ${prefix + command}`)
 if (/webp/.test(mime)) return errorReply(`Reply foto dgn caption ${prefix + command}`)
@@ -1292,7 +1618,7 @@ reply("Done!!!")
 }
 break
    case 'ffstalk':{
-
+if (groupMute) return 'error'
 if (!q) return errorReply(`Example ${prefix+command} 946716486`)
 reply('tunggu sebentar kaka')
 eeh = await ffstalk.ffstalk(`${q}`)
@@ -1302,8 +1628,42 @@ Id : ${eeh.id}
 Nickname : ${eeh.nickname}`)
 }
 break
+
+case 'lirik':
+case 'lyrics': {
+    if (groupMute) return 'error'
+    if(!q) return reply("Apa yang mau dicari?")
+        let config = {
+            method: 'get',
+            maxBodyLength: Infinity,
+            url: `https://weeb-api.vercel.app/genius?query=${q}`,
+            headers: { }
+          };
+          
+          async function lirik() {
+            try {
+              const response = await axios.request(config);
+              link = response.data[0].url
+              const res = await axios.request(
+                {
+                    method: 'get',
+                    url: `https://weeb-api.vercel.app/lyrics?url=${link}`
+                }
+              )
+              hupao.sendMessage(m.chat, {text: res.data}, {quoted: m})
+            }
+            catch (undefined) {
+              reply("Lagu tidak ditemukan");
+            }
+          }
+          
+          lirik();
+}
+break
+
 case 'pushcontid':{
-if (!isCreator) return errorReply(mess.owner)
+    if (groupMute) return 'error'
+if (!isOwner) return errorReply(mess.owner)
 let idgc = text.split("|")[0]
 let pesan = text.split("|")[1]
 if (!idgc && !pesan) return reply(`Example: ${prefix + command} idgc|pesan`)
@@ -1327,7 +1687,8 @@ break;
 
 //=================================================//
 case 'pushkontak':{
-if (!isCreator) return errorReply(mess.owner)
+    if (groupMute) return 'error'
+if (!isOwner) return errorReply(mess.owner)
 if (!m.isGroup) return errorReply(`di group coy`)
 if (!text) return errorReply(`Teks Nya Kak?`)
 let mem = await participants.filter(v => v.id.endsWith('.net')).map(v => v.id)
@@ -1342,7 +1703,8 @@ reply(`*Sukses mengirim pesan Ke ${mem.length} orang*`)
 break
 case  'myip':
             case 'ipbot':
-                if (!isCreator) return errorReply(mess.owner)
+                if (groupMute) return 'error'
+                if (!isOwner) return errorReply(mess.owner)
                 var http = require('http')
                 http.get({
                     'host': 'api.ipify.org',
@@ -1356,22 +1718,25 @@ case  'myip':
                 break
                 
                 case 'getcase':
-if (!isCreator) return errorReply('lu olang pikir lu olang owner a?')
+                    if (groupMute) return 'error'
+if (!isOwner) return errorReply('lu olang pikir lu olang owner a?')
 const getCase = (cases) => {
-return "case"+`'${cases}'`+fs.readFileSync("oka.js").toString().split('case \''+cases+'\'')[1].split("break")[0]+"break"
+return "case"+`'${cases}'`+fs.readFileSync("hupao.js").toString().split('case \''+cases+'\'')[1].split("break")[0]+"break"
 }
 reply(`${getCase(q)}`)
 break
 //=================================================//
 case 'public': {
-if (!isCreator) return errorReply(mess.owner)
+    if (groupMute) return 'error'
+if (!isOwner) return errorReply(mess.owner)
 hupao.public = true
 reply('Sukse Change To Public')
 }
 break
 //=================================================//
 case 'self': {
-if (!isCreator) return errorReply(mess.owner)
+    if (groupMute) return 'error'
+if (!isOwner) return errorReply(mess.owner)
 hupao.public = false
 reply('Sukses Change To Self')
 }
@@ -1379,7 +1744,7 @@ break
 //=================================================//
 
         case 'addprem':
-if (!isCreator) return errorReply(mess.owner)
+if (!isOwner) return errorReply(mess.owner)
 if (!args[0]) return reply(`Use ${prefix+command} number\nExample ${prefix+command} 6283129109022`)
 prrkek = q.split("|")[0].replace(/[^0-9]/g, '')+`@s.whatsapp.net`
 let ceknya = await hupao.onWhatsApp(prrkek)
@@ -1391,7 +1756,7 @@ break
 //=================================================//
 
  case 'delprem':
-if (!isCreator) return errorReply(mess.owner)
+if (!isOwner) return errorReply(mess.owner)
 if (!args[0]) return reply(`Use ${prefix+command} nomor\nExample ${prefix+command} 916909137213`)
 ya = q.split("|")[0].replace(/[^0-9]/g, '')+`@s.whatsapp.net`
 unp = prem.indexOf(ya)
@@ -1411,7 +1776,7 @@ hupao.sendMessage(m.chat, { text: teks.trim() }, 'extendedTextMessage', { quoted
 break
 //=================================================//
 case 'pengguna':  {
-if (!isCreator) return errorReply(mess.owner)
+if (!isOwner) return errorReply(mess.owner)
 if (!args[0]) return reply(`*Contoh : ${command} add 6281214281312*`)
 if (args[1]) {
 orgnye = args[1] + "@s.whatsapp.net"
@@ -1433,19 +1798,9 @@ reply("Error")
 }
 }
 break
-case 'git': case 'gitclone':
-if (!args[0]) return reply(`Where is the link?\nExample :\n${prefix}${command} https://github.com/boedzhanks/ShinoaTelebot`)
-if (!isUrl(args[0]) && !args[0].includes('github.com')) return replygcxeon(`Link invalid!!`)
-let regex1 = /(?:https|git)(?::\/\/|@)github\.com[\/:]([^\/:]+)\/(.+)/i
-    let [, user, repo] = args[0].match(regex1) || []
-    repo = repo.replace(/.git$/, '')
-    let url = `https://api.github.com/repos/${user}/${repo}/zipball`
-    let filename = (await fetch(url, {method: 'HEAD'})).headers.get('content-disposition').match(/attachment; filename=(.*)/)[1]
-    hupao.sendMessage(m.chat, { document: { url: url }, fileName: filename+'.zip', mimetype: 'application/zip' }, { quoted: m }).catch((err) => reply('error om :<'))
-break
 
     case 'hd': case 'remini': {
-                
+            if (!isPrem) return errorReply(mess.prem)
 			if (!quoted) return reply(`Where is the picture?`)
 			if (!/image/.test(mime)) return reply(`Send/Reply Photos With Captions ${prefix + command}`)
 			await loading()
@@ -1466,7 +1821,8 @@ teksooop += `- ${ii}\n`
 reply(teksooop)
 break
         case 'autosticker':
-if (!isCreator) return errorReply(mess.owner)
+            if (groupMute) return 'error'
+if (!isOwner) return errorReply(mess.owner)
 if (args[0] == 'on') {
 if (autosticker) return reply('*Activated!*')
 autosticker = true
@@ -1481,9 +1837,10 @@ reply(`Type .autosticker on To Activate And .autosticker off To Deactivate`)
 break
         case 'autostickergc':
             case 'autosticker':
+                if (groupMute) return 'error'
 if (!m.isGroup) return errorReply('khusus grup om')
 if (!isBotAdmins) return errorReply('bot bukan atmin')
-if (!isAdmins && !isCreator) return errorReply('atmin')
+if (!isAdmins && !isOwner) return errorReply('atmin')
 if (args.length < 1) return reply('type auto sticker on to enable\ntype auto sticker off to disable')
 if (args[0]  === 'on'){
 if (isAutoSticker) return reply(`Already activated`)
@@ -1504,11 +1861,11 @@ break
                 const namaUser = q.substring(0, q.indexOf('|') - 0)
                 const umurUser = q.substring(q.lastIndexOf('|') + 1)
                 const serialUser = createSerial(20)
-                if(isNaN(umurUser)) return replygcxeon('Umur harus berupa angka!!')
-                if (namaUser.length >= 30) return replygcxeon(`Namamu terlalu panjang`)
-                if (umurUser > 50) return replygcxeon(`Dasar orang tua, ga bisa usia mu terlalu tua`)
-                if (umurUser < 12) return replygcxeon(`Dasar bocil, ga bisa usia mu terlalu muda`)
-				mzd = `Kamu telah terdaftar dengan informasi sebagai berikut:\n\n⭔ Nama : ${namaUser}\n⭔ Umur : ${umurUser}\n⭔ Nomor : wa.me/${m.sender.split("@")[0]}\n⭔ NS : ${serialUser}`
+                if(isNaN(umurUser)) return reply('Umur harus berupa angka!!')
+                if (namaUser.length >= 30) return reply(`Namamu terlalu panjang`)
+                if (umurUser > 50) return reply(`Dasar orang tua, ga bisa usia mu terlalu tua`)
+                if (umurUser < 12) return reply(`Dasar bocil, ga bisa usia mu terlalu muda`)
+				mzd = `Kamu telah terdaftar dengan informasi sebagai berikut:\n\n❏ Nama : ${namaUser}\n❏ Umur : ${umurUser}\n❏ Nomor : wa.me/${m.sender.split("@")[0]}\n❏ NS : ${serialUser}`
                 veri = m.sender
                 if (!m.isGroup) {
                     addRegisteredUser(m.sender, namaUser, umurUser, serialUser)
@@ -1521,31 +1878,94 @@ break
                 }
 		break  */
 case 'owner': case 'hupao':{
-
+if (groupMute) return 'error'
  hupao.sendContact(from, global.owner, fkontak)
     
 }
 break
 case 'wa': case 'whatsapp':{
+    if (groupMute) return 'error'
 await loading()
  hupao.sendContact(from, global.owner, m)
 }
 break
+case 'ai': {
+    if (groupMute) return 'error'
+    if (!isPrem) return errorReply(mess.prem)
+    if (!q) return reply('Example: Siapa Kamu?')
+        let data = JSON.stringify({
+            "external_id": "FRdKHnLG4JF6I14PexPWFvVyfrp-nZi6NFcoljmPPPM",
+            "message": `${q}`
+          });
+          
+          let config = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://api.apigratis.site/cai/send_message',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'accept': 'application/json'
+            },
+            data : data
+          };
+      
+      axios.request(config)
+      .then((response) => {
+        dataAI = response.data;
+        chat = dataAI.result.replies[0]
+        hupao.sendMessage(m.chat, {text: `${chat.text}`}, {quoted: m})
+      })
+      .catch((error) => {
+        console.log(error);
+      });                 
+}
+break
+
+case 'ai2': {
+    if (groupMute) return 'error'
+        let data = JSON.stringify({
+            "external_id": "FRdKHnLG4JF6I14PexPWFvVyfrp-nZi6NFcoljmPPPM",
+            "message": `${quoted.text}`
+          });
+          
+          let config = {
+            method: 'post',
+            maxBodyLength: Infinity,
+            url: 'https://api.apigratis.site/cai/send_message',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'accept': 'application/json'
+            },
+            data : data
+          };
+      
+      axios.request(config)
+      .then((response) => {
+        dataAI = response.data;
+        chat = dataAI.result.replies[0]
+        hupao.sendMessage(m.chat, {text: `${chat.text}`}, {quoted: m})
+      })
+      .catch((error) => {
+        console.log(error);
+      });                 
+}
+break
 case "bot": 
+if (groupMute) return 'error'
  reply(`*Hi ${pushname}*
 
 「 *BOT INFO* 」
-⭔Nama Creator : *Boedzhanks*
-⭔Nomor Creator : *${owner}*
-⭔Group Official : *${ofc}*
-⭔Nama Script : *Hupao*
-⭔Daftar User :*${("id", db_user).length}*
-⭔Versi Bot : *1.0.0*
-⭔Botz Name : *Hupao*
-⭔Nomor Bot : *wa.me/447389671237*
-⭔Type Baileys : *Case*
-⭔Source Code : *${hupao}*
-⭔Uptime : ⏳ *${runtime(process.uptime())}*
+❏ Nama Creator : *Boedzhanks*
+❏ Nomor Creator : *wa.me/6283129109022*
+❏ Group Official : *${ofc}*
+❏ Nama Script : *Hupao*
+❏ Daftar User : *${("id", db_user).length}*
+❏ Versi Bot : *1.0.0*
+❏ Botz Name : *Hupao*
+❏ Nomor Bot : *wa.me/447389671237*
+❏ Type Baileys : *Case*
+❏ Source Code : *https://github.com/boedzhanks/Hupao*
+❏ Uptime : ⏳ *${runtime(process.uptime())}*
 
 ▭▬▭▬▭▬▭▬▭▬▭▬▭▬
 Powered By *${ownername}*
@@ -1553,60 +1973,196 @@ Powered By *${ownername}*
 
 await hupao.sendMessage(m.chat, {audio: fs.readFileSync('./audio.mp3'),mimetype: 'audio/mpeg',ptt: true}, {quoted:ftroli})
 break
-   /* case 'tiktok': case 'tt': case 'tiktokvideo': case 'ttvideo':{ 
-      
-if (!text) return errorReply( `Example : ${prefix + command} link`)
-if (!q.includes('tiktok')) return errorReply(`Link Invalid!!`)
-reply(`Tunggu sebentar ya kakak:>`)
-require('./lib/tiktok').Tiktok(q).then( data => {
-hupao.sendMessage(m.chat, { caption: `Here you go!`, video: { url: data.watermark }}, {quoted:m})
-})
+
+
+//Anime Menu
+case 'loli': {
+    if (groupMute) return 'error'
+    await loading()
+    const response = await axios.get('https://weeb-api.vercel.app/loli', {
+  responseType: 'arraybuffer'
+});
+  const imageBuffer = await Buffer.from(response.data, 'binary') // Get the image data as a buffer
+  hupao.sendMessage(m.chat, {image:  imageBuffer, caption: `Peod Lu`}, {quoted: m})  
 }
 break
-    case 'tiktokaudio': case 'ttsong': {
-if (!text) return errorReply( `Example : ${prefix + command} link`)
-if (!q.includes('tiktok')) return errorReply(`Link Invalid!!`)
-reply(`Tunggu sebentar ya kakak:>`)
-require('./lib/tiktok').Tiktok(q).then( data => {
-hupao.sendMessage(m.chat, { audio: { url: data.audio }, mimetype: 'audio/mp4' }, { quoted: m })
-})
+
+case 'character':
+case 'chara':
+case 'searchcharacter': {
+    if (groupMute) return 'error'
+    if(!q) return reply('Apa yang mau dicari?')
+    await loading()
+let config = {
+  method: 'get',
+  maxBodyLength: Infinity,
+  url: `https://weeb-api.vercel.app/character?search=${q}`,
+  headers: { }
+};
+
+async function character() {
+  try {
+    const response = await axios.request(config);
+    result = response.data[0]
+let text =`
+❏ Nama : ${result.name.full}
+❏ Japanese : ${result.name.native}
+❏ Umur : ${result.age}
+❏ Gender : ${result.gender}
+❏ Tanggal Lahir : ${result.dateOfBirth}
+${result.description}`
+image = await getBuffer(result.imageUrl)
+hupao.sendMessage(m.chat, {image: image, caption: text}, {quoted: m})
+  }
+  catch (undefined) {
+    reply("Character Tidak Ditemukan");
+  }
 }
-break */
-case 'tiktok':{
-    if (!q) return reply( `Example : ${prefix + command} link`)
-    if (!q.includes('tiktok')) return reply(`Link Invalid!!`)
-    require('./lib/tiktok.js').Tiktok(q).then( data => {
-    hupao.sendMessage(m.chat, { caption: `Here you go!`, video: { url: data.watermark }}, {quoted:m})
-    })
-    }
-    break
-    case 'tiktokaudio':{
-    if (!q) return replygcxeon( `Example : ${prefix + command} link`)
-    if (!q.includes('tiktok')) return replygcxeon(`Link Invalid!!`)
-    require('./lib/tiktok.js').Tiktok(q).then( data => {
-    const xeontikmp3 = {url:data.audio}
-    hupao.sendMessage(m.chat, { audio: xeontikmp3, mimetype: 'audio/mp4', ptt: true }, { quoted: m })
-    })
-    }
-    break
-        //anime
-        case 'waifu':{
- waifudd = await axios.get(`https://nekos.life/api/v2/img/waifu`)       
-            await hupao.sendMessage(m.chat, { image: { url:waifudd.data.url} , caption: mess.success}, { quoted:m }).catch(err => {
-                    return('Error!')
-                })
-                }
+
+character();
+}
 break
-        case 'loli': {
-reply(mess.wait)
-hupao.sendMessage(m.chat, { image: { url: `https://api.akuari.my.id/randomimganime/loli`}, caption: `𝗗𝗼𝗻𝗲 𝗸𝗮𝗸`})
+
+case 'waifu': {
+    if (groupMute) return 'error'
+    await loading()
+        const response = await axios.get('https://weeb-api.vercel.app/waifu', {
+      responseType: 'arraybuffer'
+    });
+      const imageBuffer = await Buffer.from(response.data, 'binary') // Get the image data as a buffer
+      hupao.sendMessage(m.chat, {image:  imageBuffer, caption: `Istrinya Gepeng`}, {quoted: m})    
+    }
+    break
+
+    case 'waifu3':
+        if (groupMute) return 'error'
+        waifudd = await axios.get(`https://waifu.pics/api/sfw/waifu`) 
+      var wbuttsss = [
+         {buttonId: `.${command}`, buttonText: {displayText: `Next ✨`}, type: 1},
+         ]
+       let button1Messages = {
+        image: waifudd,
+        caption:  `Here you go!`,
+        footer: `${global.botname}`,
+       buttons: wbuttsss,
+       headerType: 2
+       }       
+                 await hupao.sendMessage(m.chat, button1Messages, { quoted:m }).catch(err => {
+                         return('Error!')
+                     })
+     break
+
+case 'wait': case 'tracemoe': {
+    if (groupMute) return 'error'
+    if (!quoted) return reply('Reply Image/Scene Anime')
+    if (!/image/.test(mime)) m.reply('Reply Image/Scene Anime')
+try {
+    media = await hupao.downloadAndSaveMediaMessage(quoted)
+    let { UploadFileUgu, webp2mp4File, TelegraPh } = require('./lib/uploader.js')
+    anu = await TelegraPh(media)
+    linkGambar = (util.format(anu))
+    await axios.get(`https://api.trace.moe/search?anilistInfo&url=${linkGambar}`)
+        .then(response => {
+            res = response.data.result[0]
+            anilist = res.anilist
+            waktu = timeWait(res.from)
+            capt = `
+「 What Anime Is This 」\n
+${anilist.title.native}
+❏ Japanese : ${anilist.title.romaji}
+❏ English : ${anilist.title.english}
+❏ Episode : ${res.episode}
+❏ Time : ${waktu}
+❏ Similarity : ${(res.similarity * 100).toFixed(1)}%
+❏ Ecchi : ${anilist.isAdult}
+❏ Anilist : https://anilist.co/anime/${anilist.id}
+❏ MAL : https://myanimelist.net/anime/${anilist.idMal}`
+        hupao.sendMessage(m.chat, {video: {url: res.video}, caption: capt}, {quoted: m})
+  })
+  .catch(error => {
+    console.error('Error making the request:', error);
+  });
+} catch (error) {
+   console.log(error)
 }
+}
+break
+
+case 'saucenao': {
+if (groupMute) return 'error'
+    if (!quoted) return reply(`Balas Image Dengan Caption ${prefix + command}`)
+        if (!/image/.test(mime)) m.reply('Reply Image/Gambar Anime')
+    try {
+    let media = await hupao.downloadAndSaveMediaMessage(quoted)
+    let { UploadFileUgu, webp2mp4File, TelegraPh } = require('./lib/uploader.js')
+    let anu = await TelegraPh(media)
+    let img_url = (util.format(anu))
+    await saucenaoapi(img_url)
+    .then(async (result) => {
+       result = result[0]
+       data = result.raw.data
+capt = `
+「 Saucenao 」
+
+❏ Url = ${result.url}
+❏ Site = ${result.site}
+❏ Similarity = ${result.similarity}%
+❏ Creator = ${data.creator}
+❏ Material = ${data.material}
+❏ Characters = ${data.characters}`
+    image = await getBuffer(result.thumbnail)
+    hupao.sendMessage(m.chat, {image: image, caption: capt}, {quoted: m})
+    })
+} catch (error) {
+    console.log(error)
+}
+}
+break
+
+case 'neko' :
+    if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
+await loading()
+waifudd = await axios.get(`https://waifu.pics/api/sfw/neko`)
+hupao.sendMessage(from, {image: {url:waifudd.data.url},caption:`Furry Lo`},{ quoted:m }).catch(err => {
+ return('Error!')
+})
+break
+case 'neko2': {
+    if (groupMute) return 'error'
+    await loading()
+        const response = await axios.get('https://weeb-api.vercel.app/neko', {
+      responseType: 'arraybuffer'
+    });
+      const imageBuffer = await Buffer.from(response.data, 'binary') // Get the image data as a buffer
+      hupao.sendMessage(m.chat, {image:  imageBuffer, caption: `Furry Lo`}, {quoted: m})    
+    }
+    break
+
+case 'waifu2' :
+    if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
+await loading()
+waifudd = await axios.get(`https://waifu.pics/api/sfw/waifu`) 
+hupao.sendMessage(from, {image: {url:waifudd.data.url},caption:`Bojone Gepeng`}, { quoted:m }).catch(err => {
+ return('Error!')
+})
+break
+
+case 'kill':case 'pat':case 'lick':case 'bite':case 'yeet':case 'bonk':case 'wink':case 'poke':case 'nom':case 'slap':case 'smile':case 'wave':case 'blush':case 'smug':case 'glomp':case 'happy':case 'dance':case 'cringe':case 'highfive':case 'handhold':
+if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
+await loading()
+ axios.get(`https://api.waifu.pics/sfw/${command}`)
+.then(({data}) => {
+hupao.sendVideoAsSticker(from, data.url, m, { packname: global.packname, author: global.author })
+})
 break
 //=================================================
 
        
 case'menfes': case 'menfess': case 'confes': case 'confess' :{
-                 
+                 if (groupMute) return 'error'
     hupao.menfess = hupao.menfess ? hupao.menfess : {}
     if (!text) throw `*Cara penggunaan :*\n\n${prefix + command} nomor|nama pengirim|pesan\n\n*Note:* nama pengirim boleh nama samaran atau anonymous.\n\n*Contoh:* ${prefix + command} ${m.sender.split`@`[0]}|Anonymous|Hai.`;
     let [jid, name, pesan] = text.split('|');
@@ -1635,6 +2191,7 @@ case'menfes': case 'menfess': case 'confes': case 'confess' :{
     }
     break
         case "kalkulator":
+            if (groupMute) return 'error'
  if (!text) return reply(`Lah Mana`)
 let val = text
 .replace(/[^0-9\-\/+*×÷πEe()piPI/]/g, '')
@@ -1661,6 +2218,7 @@ throw 'Format salah, hanya 0-9 dan Simbol -, +, *, /, ×, ÷, π, e, (, ) yang d
   }
   break
          case 'ping': case 'botstatus': {
+            if (groupMute) return 'error'
                 const used = process.memoryUsage()
                 const cpus = os.cpus().map(cpu => {
                     cpu.total = Object.keys(cpu.times).reduce((last, type) => last + cpu.times[type], 0)
@@ -1693,10 +2251,9 @@ throw 'Format salah, hanya 0-9 dan Simbol -, +, *, /, ×, ÷, π, e, (, ) yang d
                 respon = `
 Response Speed ${latensi.toFixed(4)} _Second_ \n ${oldd - neww} _miliseconds_\n\nRuntime : ${runtime(process.uptime())}
 
-🧑‍💻 Info Owner: ${ownername}
-😶 Status Owner: Jomblo 🥺
-🗿 Info Bot: Hupao
-💻 Info Server
+❏ Info Owner: ${ownername}
+❏ Info Bot: Hupao
+❏ Info Server
 RAM: ${formatp(os.totalmem() - os.freemem())} / ${formatp(os.totalmem())}
 
 _NodeJS Memory Usaage_
@@ -1710,18 +2267,18 @@ ${cpus.map((cpu, i) => `${i + 1}. ${cpu.model.trim()} (${cpu.speed} MHZ)\n${Obje
             }
             break
     case 'profil': case 'profile': {
-                                    
-                        let taa = db.data.users[sender]
+                                    if (groupMute) return 'error'
+                        let tao = db.data.users[sender]
          const owned = `${owner}@s.whatsapp.net`
 const version = 2
 const text12 = `*Hay selamat ${ucapanWaktu}*
 
 ▭▬▭▬▭▬▭▬▭▬▭▬▭▬
 「 *Info User* 」
-⭔Nama Pengguna  : *@${sender.split('@')[0]}*
-⭔Premium : ${isPrem ? '✅' : '❎'}
-⭔Limit : ${taa.limit}
-⭔Status : Terdaftar di database ✅
+❏ Nama Pengguna  : *@${sender.split('@')[0]}*
+❏ Premium : ${isPrem ? '✅' : '❎'}
+❏ Limit : ${tao.limit}
+❏ Status : Terdaftar di database ✅
 ▭▬▭▬▭▬▭▬▭▬▭▬▭
 
 Terima Kasih sudah mendaftar ke dalam bot Hupao.
@@ -1746,7 +2303,8 @@ break
                                                                            
 //=================================================//
 case 'linkgroup': case 'linkgc': {
-if (!m.isGroup) return errorReply('Buat Di Group Bodoh')
+    if (groupMute) return 'error'
+if (!m.isGroup) return errorReply('Fitur Khusus Group')
 if (!isBotAdmins) return errorReply('Bot Bukan Admin Cuy')
 await loading()
 let response = await hupao.groupInviteCode(from)
@@ -1755,18 +2313,20 @@ hupao.sendText(from, `https://chat.whatsapp.com/${response}\n\nLink Group : ${gr
 break
 //=================================================//
 case 'resetlinkgc':
+    if (groupMute) return 'error'
 if (!isAdmins) return errorReply(mess.admin)
 
-if (!m.isGroup) return errorReply('Buat Di Group Bodoh')
+if (!m.isGroup) return errorReply('Fitur Khusus Group')
 if (!isBotAdmins) return errorReply('Bot Bukan Admin Cuy')
 await loading()
 hupao.groupRevokeInvite(from)
 break
 //=================================================//
 case 'sendlinkgc': {
+    if (groupMute) return 'error'
 if (!isPrem) return errorReply(mess.prem)
 
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
     if (!isAdmins) return errorReply('lu emangnya atmin?')
 await loading()
@@ -1779,19 +2339,20 @@ hupao.sendText(bnnd, `https://chat.whatsapp.com/${response}\n\nLink Group : ${gr
 break
 //=================================================//
 case 'kick': {
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+    if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 let users = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.groupParticipantsUpdate(from, [users], 'remove')
 }
 break
 //=================================================//
 case 'add': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 let users = m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.groupParticipantsUpdate(from, [users], 'add')
@@ -1799,10 +2360,10 @@ await hupao.groupParticipantsUpdate(from, [users], 'add')
 break
 //=================================================//
 case 'promote': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 let users = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.groupParticipantsUpdate(from, [users], 'promote')
@@ -1810,10 +2371,10 @@ await hupao.groupParticipantsUpdate(from, [users], 'promote')
 break
 //=================================================//
 case 'demote': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 let users = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.groupParticipantsUpdate(from, [botNumber], 'demote')
@@ -1821,18 +2382,19 @@ await hupao.groupParticipantsUpdate(from, [botNumber], 'demote')
 break
 //=================================================//
     case 'hidetag': case 'ht': {
+        if (groupMute) return 'error'
 if (!isAdmins) return reply(mess.admin)
-if (!isPrem) return reply (mess.prem)
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (!m.isGroup) return reply('Fitur Khusus Group')
 
 hupao.sendMessage(from, { text : q ? q : '' , mentions: participants.map(a => a.id)}, {quoted:m})
 }
 break
 //=================================================
 case 'editgroup': {   
+    if (groupMute) return 'error'
 
-if (!m.isGroup) return m.reply('Buat Di Group Bodoh')
-if (!isAdmins) return m.reply('Lah Dikira Admin Group Kali')
+if (!m.isGroup) return m.reply('Fitur Khusus Group')
+if (!isAdmins) return m.reply('Fitur untuk admin')
 
 if (args[0] === 'close'){
 await hupao.groupSettingUpdate(from, 'announcement').then((res) => m.reply(`Sukses Menutup Group`)).catch((err) => m.reply(jsonformat(err)))
@@ -1847,9 +2409,9 @@ Group Close`}, {quoted:m})
 break
 //=================================================//
 case 'editinfo': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
  if (args[0] === 'open'){
 await hupao.groupSettingUpdate(from, 'unlocked').then((res) => m.reply(`Sukses Membuka Edit Info Group`)).catch((err) => m.reply(jsonformat(err)))
@@ -1865,7 +2427,8 @@ Editinfo Close`}, {quoted:m})
 break
 //=================================================//
 case 'join': {
-if (!isPrem) return reply(mess.prem)
+    if (groupMute) return 'error'
+if (!isOwner) return reply(mess.owner)
 if (!text) throw 'Masukkan Link Group!'
 if (!isUrl(args[0]) && !args[0].includes('whatsapp.com')) throw 'Link Invalid!'
 
@@ -1875,10 +2438,10 @@ await hupao.groupAcceptInvite(result).then((res) => m.reply(jsonformat(res))).ca
 break
 //=================================================//
 case 'editsubjek': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 if (!text) throw 'Text nya ?'
 await loading()
 await hupao.groupUpdateSubject(from, text).then((res)).catch((err) => m.reply(jsonformat(err)))
@@ -1886,10 +2449,10 @@ await hupao.groupUpdateSubject(from, text).then((res)).catch((err) => m.reply(js
 break
 //=================================================//
 case 'editdesk':{
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 if (!text) throw 'Text Nya ?'
 await loading()
 await hupao.groupUpdateDescription(from, text).then((res)).catch((err) => m.reply(jsonformat(err)))
@@ -1897,25 +2460,26 @@ await hupao.groupUpdateDescription(from, text).then((res)).catch((err) => m.repl
 break
 //=================================================//
 case 'tagall': {
+    if (groupMute) return 'error'
 if (!isAdmins) return reply(mess.admin)
 if (!m.isGroup) return
 await loading()
 let teks = `══✪〘 *👥 Tag All* 〙✪══
  ➲ *Pesan : ${q ? q : 'kosong'}*\n\n`
 for (let mem of participants) {
-teks += `⭔ @${mem.id.split('@')[0]}\n`
+teks += `❏ @${mem.id.split('@')[0]}\n`
 }
 hupao.sendMessage(m.chat, { text: teks, mentions: participants.map(a => a.id) }, { quoted: fkontak})
 }
 break
 //=================================================//
 case'demoteall':
-
+if (groupMute) return 'error'
 if (!m.isGroup) return 
-reply('Buat Di Group Bodoh')
+reply('Fitur Khusus Group')
 if (!isBotAdmins) return 
 reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return m.reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return m.reply('Fitur untuk admin')
 await loading()
 var groupe = await hupao.groupMetadata(from)
 var members = groupe['participants']
@@ -1927,10 +2491,10 @@ hupao.groupParticipantsUpdate(from, mems, 'demote')
 break
 //=================================================//
 case'promoteall':
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 var groupe = await hupao.groupMetadata(from)
 var members = groupe['participants']
@@ -1942,6 +2506,7 @@ hupao.groupParticipantsUpdate(from, mems, 'promote')
 break
 //=================================================//
 case 'sticker': case 's': case 'stickergif': case 'sgif': {
+    if (groupMute) return 'error'
  if (!quoted) throw `Balas Video/Image Dengan Caption ${prefix + command}`
 if (/image/.test(mime)) {
 let media = await quoted.download()
@@ -1959,6 +2524,7 @@ throw `Kirim Gambar/Video Dengan Caption ${prefix + command}\nDurasi Video 1-9 D
 break
 //=================================================//
 case 'inspect': {
+    if (groupMute) return 'error'
 if (isBan) return reply('*Lu Di Ban Owner*')
 if (!args[0]) return reply("Linknya?")
 let linkRegex = args.join(" ")
@@ -1997,8 +2563,9 @@ break
 //=================================================
 case "welcome":
 {
-if (!isCreator) return reply(mess.owner)
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+    if (groupMute) return 'error'
+if (!isOwner) return reply(mess.owner)
+if (!m.isGroup) return reply('Fitur Khusus Group')
 await loading()
 if (args.length < 1) return reply('ketik on untuk mengaktifkan\nketik off untuk menonaktifkan')
 if (args[0] === "on") {
@@ -2021,9 +2588,10 @@ reply('Sukses Mematikan Welcome  di group ini')
 break
 //=================================================
 case 'bcgc': case 'bcgroup': {
-if (!isPrem) return reply(mess.prem)
+    if (groupMute) return 'error'
+if (!owner) return reply('Khusus Owner')
 await loading()
-if (!text) throw `Text mana?\n\nExample : ${prefix + command} fatih-san`
+if (!text) throw `Text mana?\n\nExample : ${prefix + command} boedzhanks`
 let getGroups = await hupao.groupFetchAllParticipating()
 let groups = Object.entries(getGroups).slice(0).map(entry => entry[1])
 let anu = groups.map(v => v.id)
@@ -2037,6 +2605,7 @@ reply(`Sukses Mengirim Broadcast Ke ${anu.length} Group`)
 break
 
 case 'readvo': case 'readviewonce':
+    if (groupMute) return 'error'
 if (m.quoted.mtype == 'viewOnceMessageV2') {
     if (m.isBaileys && m.fromMe) return
     let val = { ...m }
@@ -2048,10 +2617,10 @@ if (m.quoted.mtype == 'viewOnceMessageV2') {
 break
 
 case 'antiviewonce': {
-
-    if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+    if (!m.isGroup) return reply('Fitur Khusus Group')
     if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-    if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+    if (!isAdmins) return reply('Fitur untuk admin')
     await loading()
     if (args.length < 1) return reply('ketik on untuk mengaktifkan\nketik off untuk menonaktifkan')
     if (args[0] === "on") {
@@ -2070,10 +2639,10 @@ case 'antiviewonce': {
     break
 //=================================================//
 case 'antilink': {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+    if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 if (args.length < 1) return reply('ketik on untuk mengaktifkan\nketik off untuk menonaktifkan')
 if (args[0] === "on") {
@@ -2090,14 +2659,35 @@ m.reply('on untuk mengaktifkan, off untuk menonaktifkan')
 }
 }
 break
+
+case 'mute': {
+    if (!m.isGroup) return reply('Fitur Khusus Group')
+    if (!isAdmins) return reply('Fitur untuk admin')
+    if (groupMute) return m.reply('Hutao sudah dimute di group ini')
+    gcmute.push(from)
+    fs.writeFileSync('./lib/mute.json', JSON.stringify(gcmute, null, 2))
+    await hupao.sendMessage(from, {text: 'Hutao dimute di group ini'}, {quoted: fkontak})
+    }
+    break
+
+    case 'unmute': {
+        if (!m.isGroup) return reply('Fitur Khusus Group')
+        if (!isAdmins) return reply('Fitur untuk admin')
+        if (!groupMute) return m.reply('Hutao belum dimute, ingin mute hutao? ketik mute')
+        let off = gcmute.indexOf(from)
+        gcmute.splice(off, 1)
+        fs.writeFileSync('./database/user.json', JSON.stringify(gcmute, null, 2))
+        await hupao.sendMessage(from, {text: 'Hutao kembali'}, {quoted: fkontak})
+        }
+        break
 //=================================================
 //=================================================
 case "antitoxic":
 {
-
-if (!m.isGroup) return reply('Buat Di Group Bodoh')
+if (groupMute) return 'error'
+if (!m.isGroup) return reply('Fitur Khusus Group')
 if (!isBotAdmins) return reply('Bot Bukan Admin Cuy')
-if (!isAdmins) return reply('Lah Dikira Admin Group Kali')
+if (!isAdmins) return reply('Fitur untuk admin')
 await loading()
 if (args.length < 1) return m.reply('ketik on untuk mengaktifkan\nketik off untuk menonaktifkan')
 if (args[0] === "on") {
@@ -2120,8 +2710,9 @@ reply('Sukses Mematikan Anti Toxic  di group ini')
 break
 //=================================================
 case 'larangan': case 'peraturan': {
+    if (groupMute) return 'error'
 await loading()
- if (!m.isGroup) return reply('Buat Di Group Bodoh')
+ if (!m.isGroup) return reply('Fitur Khusus Group')
 hupao.sendMessage(from, { text : `Haii 👋 Aku ${botname}
 Aku Sebagai Admin Akan Melarang Kalian Untuk Toxic Ataupun Berkata Kasar Di group Ini !!!
 
@@ -2144,11 +2735,12 @@ gblok` , mentions: participants.map(a => a.id)}, {quoted:fkontak})
 break
 //=================================================//
 case 'fuck': case 'ajg': case 'ngentod': case 'bangsat': case'anjing': case'babi': case'kontol': case'memek': case'penis': case 'ngewe': case 'yatim': case 'piatu': case 'pentil': case 'pepek': case 'tempi': case 'tempe': case 'bajingan': case 'ndasmu':{
-if (!welcmm) return
+if (groupMute) return 'error'
+    if (!welcmm) return
 if (!isBotAdmins) return reply(`${mess.botAdmin}, _Untuk menendang orang yang mengirim link group_`)
 if (!m.isGroup) return m.reply('Jangan Toxic Coy Kalau Di group Dah Ku Kick Anjay')
 if (isAdmins) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Kata Kasar Terdeteksi 」\`\`\`\n\nAdmin sudah Toxic, admin bebas Toxic apapun`})
-if (isCreator) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Kata Kasar Terdeteksi 」\`\`\`\n\Owner telah Toxic, owner bebas Toxic apa pun`})
+if (isOwner) return hupao.sendMessage(m.chat, {text: `\`\`\`「 Kata Kasar Terdeteksi 」\`\`\`\n\Owner telah Toxic, owner bebas Toxic apa pun`})
 await hupao.sendMessage(m.chat,
 {
 delete: {
@@ -2161,8 +2753,10 @@ participant: mek.key.participant
 hupao.sendMessage(from, {text:`\`\`\`「 Kata Kata Toxic Terdeteksi 」\`\`\`\n\n@${m.sender.split("@")[0]} Jangan toxic di group ini`, contextInfo:{mentionedJid:[sender]}}, {quoted:fkontak})
 }
 break
-//=================================================//
+//Download Menu
         case 'play':  case 'song': {
+            if (groupMute) return 'error'
+            if (!isPrem) return errorReply(mess.prem)
         if (!text) return reply('*Masukan Judul / Link Dari YouTube!*')
         await loading()
         const playmp3 = require('./lib/ytdl.js')
@@ -2189,17 +2783,19 @@ break
         break
 
         case 'ytmp3': case 'ytaudio':
-            let xeonaudp3 = require('./lib/ytdl.js')
-            if (args.length < 1 || !isUrl(text) || !xeonaudp3.isYTUrl(text)) return replygcxeon(`Where's the yt link?\nExample: ${prefix + command} https://youtube.com/shorts/YQf-vMjDuKY?feature=share`)
+            if (groupMute) return 'error'
+            if (!isPrem) return errorReply(mess.prem)
+            let audp3 = require('./lib/ytdl.js')
+            if (args.length < 1 || !isUrl(text) || !audp3.isYTUrl(text)) return reply(`Where's the yt link?\nExample: ${prefix + command} https://youtube.com/shorts/YQf-vMjDuKY?feature=share`)
             await loading()
-            let audio = await xeonaudp3.mp3(text)
+            let audio = await audp3.mp3(text)
             await hupao.sendMessage(m.chat,{
                 audio: fs.readFileSync(audio.path),
                 mimetype: 'audio/mp4', ptt: true,
                 contextInfo:{
                     externalAdReply:{
                         title:audio.meta.title,
-                        body: `Boedzhanks`,
+                        body: `By Boedzhanks`,
                         thumbnail: await fetchBuffer(audio.meta.image),
                         mediaType:2,
                         mediaUrl:text,
@@ -2211,11 +2807,15 @@ break
             break
 
             case 'ytmp4': case 'ytvideo': {
-                const xeonvidoh = require('./lib/ytdl.js')
-                if (args.length < 1 || !isUrl(text) || !xeonvidoh.isYTUrl(text)) replygcxeon(`Where is the link??\n\nExample : ${prefix + command} https://youtube.com/watch?v=PtFMh6Tccag%27 128kbps`)
+                if (groupMute) return 'error'
+                if (!isPrem) return errorReply(mess.prem)
+                const vidoh = require('./lib/ytdl.js')
+                if (args.length < 1 || !isUrl(text) || !vidoh.isYTUrl(text)) reply(`Where is the link??\n\nExample : ${prefix + command} https://youtube.com/watch?v=PtFMh6Tccag%27 128kbps`)
                 await loading()
-                const vid=await xeonvidoh.mp4(text)
+                const vid=await vidoh.mp4(text)
                 const ytc=`
+「 Youtube Download 」
+
 *▢ Title:* ${vid.title}
 *▢ Date:* ${vid.date}
 *▢ Duration:* ${vid.duration}
@@ -2226,46 +2826,174 @@ break
                 },{quoted:m})
                 }
                 break
-            
-                case 'igvideo': case 'igimage': case 'igvid': case 'igimg': {
-                    if (!text) return reply(`You need to give the URL of Any Instagram video, post, reel, image`)
-                    await loading()
-                let res
-                try {
-                  res = await fetch(`https://www.guruapi.tech/api/igdlv1?url=${text}`)
-                } catch (error) {
-                  return reply(`An error occurred: ${error.message}`)
-                }
-                let api_response = await res.json()
-                if (!api_response || !api_response.data) {
-                  return reply(`No video or image found or Invalid response from API.`)
-                }
-                const mediaArray = api_response.data;
-                for (const mediaData of mediaArray) {
-                  const mediaType = mediaData.type
-                  const mediaURL = mediaData.url_download
-                  let cap = `HERE IS THE ${mediaType.toUpperCase()}`
-                  if (mediaType === 'video') {
-                    hupao.sendMessage(m.chat, {video: {url: mediaURL}, caption: cap}, {quoted: m})
-                  } else if (mediaType === 'image') {
-                    hupao.sendMessage(m.chat, { image: {url: mediaURL}, caption: cap}, {quoted: m})
-                  }
-                }
-              }
-              break
 
-//=================================================
-case "ytreels": case "youtubereels":{
-if (!isCreator) return m.reply('*khusus Premium*')
-if (!text) return m.reply('Masukan Link Nya!!!')
-await loading ()
-downloadMp4(text)
-}
+                case 'tiktok': case 'tiktokdl': case 'ttdl': case 'tt':{
+                    if (groupMute) return 'error'
+                    if (!isPrem) return errorReply(mess.prem)
+                        if (!q) return reply( `Example : ${prefix + command} link`)
+                        if (!q.includes('tiktok', 'vt')) return reply(`Link Invalid!!`)
+                        await loading()
+                        try {
+                        ttlinkwm = await tiktok.tiktok(q)
+                            desc = `「 Tiktok Download 」\n\n❏ Author: ${ttlinkwm.author}\n\n❏ Description: ${ttlinkwm.desc}`
+                            await hupao.sendMessage(m.chat, { caption: desc, video: { url: ttlinkwm.nowm }}, {quoted:m})
+                        } catch (error) {
+                            reply('error')
+                        }
+                        }
+                    break
+                    case 'tiktoknowm': case 'ttnowm': {
+                         if (groupMute) return 'error'
+                        if (!isPrem) return errorReply(mess.prem)
+                        if (!q) return reply( `Example : ${prefix + command} link`)
+                        if (!q.includes('tiktok', 'vt')) return reply(`Link Invalid!!`)
+                        await loading()
+                        try {
+                        ttlinknowm = await tiktok.tiktok(q)
+                            desc = `「 Tiktok Download 」\n\n❏ Author: ${ttlinknowm.author}\n\n❏ Description: ${ttlinknowm.desc}`
+                            await hupao.sendMessage(m.chat, { caption: desc, video: { url: ttlinknowm.watermark }}, {quoted:m})
+                        } catch (error) {
+                            reply('error')
+                        }
+                        }
+                        break
+                    case 'tiktokaudio':{
+                         if (groupMute) return 'error'
+                        if (!isPrem) return errorReply(mess.prem)
+                    if (!q) return reply( `Example : ${prefix + command} link`)
+                    if (!q.includes('tiktok', 'vt')) return reply(`Link Invalid!!`)
+                        await loading()
+                    try {
+                    tiktokaudio = require('./lib/tiktok2.js')
+                    tiktoklinkaudio = await tiktokaudio.tiktok(q)
+                    const tikmp3 = {url:data.audio}
+                    await hupao.sendMessage(m.chat, { audio: tikmp3, mimetype: 'audio/mp4', ptt: true }, { quoted: m })
+                    } catch (error) {
+                        reply('error')
+                    }
+                }
+                    break
+
+                    case 'twitdl' : case 'twit' : case 'twitvideo': case 'twitter': { 
+                         if (groupMute) return 'error'
+                        if (!isPrem) return errorReply(mess.prem)
+                            if (!q) return reply( `Example : ${prefix + command} link`)
+                                if (!q.includes('twitter.com', 'x.com')) return reply(`Link Invalid!!`)
+                        await loading()
+                    let twitlink = q.replace(/x/, 'twitter')
+                    try {
+                    data = await twitterdown(twitlink)
+                    p = data.data
+                    await hupao.sendMessage(from, { video: { url: p.HD }, caption: '「 Twitter Download 」' })
+                    } catch (error) {
+                        reply('error')
+                    }
+                }
+                    break
+                    
+                    case 'igdl' : case 'instagram': { 
+                         if (groupMute) return 'error'
+                        if (!isPrem) return errorReply(mess.prem)
+                            if (!q) return reply( `Example : ${prefix + command} link`)
+                                if (!q.includes('instagram.com')) return reply(`Link Invalid!!`)
+                        await loading()
+                    try {
+                    data = await ndown(q)
+                    p = data.data[0]
+                    await hupao.sendMessage(from, { video: { url: p.url }, caption: '「 Instagram Download 」' })
+                    } catch (error) {
+                        reply('error')
+                    }
+                }
+                    break
+
+                    case 'reddit':
+                    case 'redditdl':
+                        {
+                             if (groupMute) return 'error'
+                    if (!isPrem) return errorReply(mess.prem)
+                    if(!q) return errorReply(`Mana Linknya`)
+                    await loading()
+                    const { reddit } = require('./scrape/reddit.js')
+                    try {
+                        data = await reddit(q)
+                            console.log(data)
+                            const tex = `「 Reddit Download 」`
+                            await hupao.sendMessage(from, {video: {url: data.video}, caption: tex}, {quoted: m})
+                    } catch (error) {
+                        reply('error')
+                    }
+                        }
+                        break 
+
+                    case 'fbdl' : case 'fb' : case 'fbvideo': case 'facebook': { 
+                         if (groupMute) return 'error'
+                        if (!isPrem) return errorReply(mess.prem)
+                            if (!q) return reply( `Example : ${prefix + command} link`)
+                                if (!q.includes('facebook.com', 'fb.watch')) return reply(`Link Invalid!!`)
+                        await loading()
+                        try{
+                        fblink = await fb.fbdown(q)
+                        linkFb = fblink.links.hd || fblink.links.sd
+                        const tex = `「 Facebook Download 」\n\nTitle: ${fblink.title}\nDuration: ${fblink.duration}`;
+                        await hupao.sendMessage(from, { video: { url: linkFb }, caption: tex },{quoted:m})
+                        } catch (error) {
+                            reply('error')
+                        }
+                    }
+                    break
+
+case 'git': case 'gitclone':
+     if (groupMute) return 'error'
+    if (!isPrem) return errorReply(mess.prem)
+if (!args[0]) return reply(`Where is the link?\nExample :\n${prefix}${command} https://github.com/boedzhanks/ShinoaTelebot`)
+if (!isUrl(args[0]) && !args[0].includes('github.com')) return reply(`Link invalid!!`)
+let regex1 = /(?:https|git)(?::\/\/|@)github\.com[\/:]([^\/:]+)\/(.+)/i
+    let [, user, repo] = args[0].match(regex1) || []
+    repo = repo.replace(/.git$/, '')
+    let url = `https://api.github.com/repos/${user}/${repo}/zipball`
+    let filename = (await fetch(url, {method: 'HEAD'})).headers.get('content-disposition').match(/attachment; filename=(.*)/)[1]
+    hupao.sendMessage(m.chat, { document: { url: url }, fileName: filename+'.zip', mimetype: 'application/zip' }, { quoted: m }).catch((err) => reply('error om :<'))
 break
+
+case 'yts': case 'ytsearch':{
+     if (groupMute) return 'error'
+    if (!isPrem) return errorReply(mess.prem)
+    if (isBan) return reply('Lu di ban kocak awokwok') 
+    if (!text) reply(`Gunakan dengan cara ${prefix+command} *text*\n\n_Contoh_\n\n${prefix+command} Boedzhanks Store`)
+    let reso = await yts(`${text}`)
+    let aramat = reso.all
+    var tbuff = await getBuffer(aramat[0].image)
+    let teks = aramat.map(v => {
+    switch (v.type) {
+            case 'video': return `
+    📛 Title : *${v.title}* 
+    ⏰ Durasi: ${v.timestamp}
+    🚀 Diupload ${v.ago}
+    😎 Views : ${v.views}
+    🌀 Url : ${v.url}
+    `.trim()
+            case 'channel': return `
+    📛 Channel : *${v.name}*
+    🌀 Url : ${v.url}
+    👻 Subscriber : ${v.subCountLabel} (${v.subCount})
+    🎦 Total Video : ${v.videoCount}
+    `.trim()
+    }
+    }).filter(v => v).join('\n----------------------------------------\n')
+    
+    hupao.sendMessage(m.chat, { image: tbuff, caption: teks }, { quoted: m })
+    
+     .catch((err) => {
+    reply("Not found")
+    })
+    }
+    break
 //=================================================
 
 case 'wm': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 
 let teks = `${text}`
 {
@@ -2280,7 +3008,8 @@ await fs.unlinkSync(encmedia)
 break
 //=================================================//
 case 'wmvideo':{
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 
 let teks = `${text}`
 {
@@ -2298,6 +3027,7 @@ break
 //=================================================//
         case'blackpink':case'rainbow2':case'water_pipe':case'halloween':case'sketch':case'sircuit':case'discovery':case'metallic2':case'fiction':case'demon':case'transformer':case'berry':case'thunder':case'magma':case'3dstone':case'neon':case'glitch':case'harry_potter':case'embossed':case'broken':case'papercut':case'gradient':case'glossy':case'watercolor':case'multicolor':case'neon_devil':case'underwater':case'bear':case'wonderfulg':case'christmas':case'neon_light':case'snow':case'cloudsky':case'luxury2':case'gradient2':case'summer':case'writing':case'engraved':case'summery':case'3dglue':case'metaldark':case'neonlight':case'oscar':case'minion':case'holographic':case'purple':case'glossyb':case'deluxe2':case'glossyc':case'fabric':case'neonc':case'newyear':case'newyear2':case'metals':case'xmas':case'blood':case'darkg':case'joker':case'wicker':case'natural':case'firework':case'skeleton':case'balloon':case'balloon2':case'balloon3':case'balloon4':case'balloon5':case'balloon6':case'balloon7':case'steel':case'gloss':case'denim':case'decorate':case'decorate2':case'peridot':case'rock':case'glass':case'glass2':case'glass3':case'glass4':case'glass5':case'glass6':case'glass7':case'glass8':case'captain_as2':case'robot':case'equalizer':case'toxic':case'sparkling':case'sparkling2':case'sparkling3':case'sparkling4':case'sparkling5':case'sparkling6':case'sparkling7':case'decorative':case'chocolate':case'strawberry':case'koifish':case'bread':case'matrix':case'blood2':case'neonligth2':case'thunder2':case'3dbox':case'neon2':case'roadw':case'bokeh':case'gneon':case'advanced':case'dropwater':case'wall':case'chrismast':case'honey':case'drug':case'marble':case'marble2':case'ice':case'juice':case'rusty':case'abstra':case'biscuit':case'wood':case'scifi':case'metalr':case'purpleg':case'shiny': case'jewelry':case'jewelry2':case'jewelry3':case'jewelry4':case'jewelry5':case'jewelry6':case'jewelry7':case'jewelry8':case'metalh':case'golden':case'glitter':case'glitter2':case'glitter3':case'glitter4':case'glitter5':case'glitter6':case'glitter7':case'metale':case'carbon':case'candy':case'metalb':case'gemb':case'3dchrome':case'metalb2':case'metalg':
 {
+     if (groupMute) return 'error'
 if (isBan) return reply('Lu di ban kocak awokwok') 
 if (!text) return reply(`Gunakan dengan cara .neon *text*`)
 await loading()
@@ -2312,182 +3042,10 @@ reply(`error`)
 }
 break
 //=================================================//
-case 'sound1':
-case 'sound2':
-case 'sound3':
-case 'sound4':
-case 'sound5':
-case 'sound6':
-case 'sound7':
-case 'sound8':
-case 'sound9':
-case 'sound10':
-case 'sound11':
-case 'sound12':
-case 'sound13':
-case 'sound14':
-case 'sound15':
-case 'sound16':
-case 'sound17':
-case 'sound18':
-case 'sound19':
-case 'sound20':
-case 'sound21':
-case 'sound22':
-case 'sound23':
-case 'sound24':
-case 'sound25':
-case 'sound26':
-case 'sound27':
-case 'sound28':
-case 'sound29':
-case 'sound30':
-case 'sound31':
-case 'sound32':
-case 'sound33':
-case 'sound34':
-case 'sound35':
-case 'sound36':
-case 'sound37':
-case 'sound38':
-case 'sound39':
-case 'sound40':
-case 'sound41':
-case 'sound42':
-case 'sound43':
-case 'sound44':
-case 'sound45':
-case 'sound46':
-case 'sound47':
-case 'sound48':
-case 'sound49':
-case 'sound50':
-case 'sound51':
-case 'sound52':
-case 'sound53':
-case 'sound54':
-case 'sound55':
-case 'sound56':
-case 'sound57':
-case 'sound58':
-case 'sound59':
-case 'sound60':
-case 'sound61':
-case 'sound62':
-case 'sound63':
-case 'sound64':
-case 'sound65':
-case 'sound66':
-case 'sound67':
-case 'sound68':
-case 'sound69':
-case 'sound70':
-case 'sound71':
-case 'sound72':
-case 'sound73':
-case 'sound74':
-case 'sound75':
-case 'sound76':
-case 'sound77':
-case 'sound78':
-case 'sound79':
-case 'sound80':
-case 'sound81':
-case 'sound82':
-case 'sound83':
-case 'sound84':
-case 'sound85':
-case 'sound86':
-case 'sound87':
-case 'sound88':
-case 'sound89':
-case 'sound90':
-case 'sound91':
-case 'sound92':
-case 'sound93':
-case 'sound94':
-case 'sound95':
-case 'sound96':
-case 'sound97':
-case 'sound98':
-case 'sound99':
-case 'sound100':
-case 'sound101':
-case 'sound102':
-case 'sound103':
-case 'sound104':
-case 'sound105':
-case 'sound106':
-case 'sound107':
-case 'sound108':
-case 'sound109':
-case 'sound110':
-case 'sound111':
-case 'sound112':
-case 'sound113':
-case 'sound114':
-case 'sound115':
-case 'sound116':
-case 'sound117':
-case 'sound118':
-case 'sound119':
-case 'sound120':
-case 'sound121':
-case 'sound122':
-case 'sound123':
-case 'sound124':
-case 'sound125':
-case 'sound126':
-case 'sound127':
-case 'sound128':
-case 'sound129':
-case 'sound130':
-case 'sound131':
-case 'sound132':
-case 'sound133':
-case 'sound134':
-case 'sound135':
-case 'sound136':
-case 'sound137':
-case 'sound138':
-case 'sound139':
-case 'sound140':
-case 'sound141':
-case 'sound142':
-case 'sound143':
-case 'sound144':
-case 'sound145':
-case 'sound146':
-case 'sound147':
-case 'sound148':
-case 'sound149':
-case 'sound150':
-case 'sound151':
-case 'sound152':
-case 'sound153':
-case 'sound154':
-case 'sound155':
-case 'sound156':
-case 'sound157':
-case 'sound158':
-case 'sound159':
-case 'sound160':
-case 'sound161':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
- hupao = await getBuffer(`https://github.com/DGXeon/Tiktokmusic-API/raw/master/tiktokmusic/${command}.mp3`)
-await hupao.sendMessage(from, { audio: hupao, mimetype: 'audio/mp4', ptt: true, contextInfo:{  externalAdReply: { showAdAttribution: true,
-mediaType:  1,
-mediaUrl: 'https://wa.me/6283129109022',
-title: `Boedzhanks`,
-sourceUrl: `https://wa.me/6283129109022`, 
-thumbnail: thumb
-}
-}})
-break
-//=================================================//
 case 'pin': case 'pinterest': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (!isCreator) return reply('fitur dinonaktifkan')
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 let { pinterest } = require('./lib/scraper.js')
 anu = await pinterest(text)
@@ -2495,342 +3053,85 @@ result = anu[Math.floor(Math.random() * anu.length)]
 hupao.sendMessage(from, {image: { url: result }, caption: 'SUKSES'},{quoted:m})
 }
 break
-//=================================================//
-case 'neko' :
-if (!isCreator) return m.reply('*Khusus Premium*')
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-waifudd = await axios.get(`https://waifu.pics/api/sfw/neko`)
-hupao.sendMessage(from, {image: {url:waifudd.data.url},caption:`Furry Lo`},{ quoted:m }).catch(err => {
- return('Error!')
-})
-break
-//=================================================//
-case 'waifu2' :
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-waifudd = await axios.get(`https://waifu.pics/api/sfw/waifu`) 
-hupao.sendMessage(from, {image: {url:waifudd.data.url},caption:`Bojone Gepeng`}, { quoted:m }).catch(err => {
- return('Error!')
-})
-break
-//=================================================//
-case 'kill':case 'pat':case 'lick':case 'bite':case 'yeet':case 'bonk':case 'wink':case 'poke':case 'nom':case 'slap':case 'smile':case 'wave':case 'blush':case 'smug':case 'glomp':case 'happy':case 'dance':case 'cringe':case 'highfive':case 'handhold':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
- axios.get(`https://api.waifu.pics/sfw/${command}`)
-.then(({data}) => {
-hupao.sendImage(from, data.url, 'Success Coy', m)
-})
-break
-//=================================================//
-case 'fajar':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-FajarNews().then(async(res) => {
-console.log(res) 
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
+
+case 'cekkhodam': case 'khodam': {
+     if (groupMute) return 'error'
+    const items = [
+        "Nasi goreng", "Hamster kombat", "Seblak", "Singa putih", "Bihun",
+        "Kabel data vivan", "Rx king", "Jokowi", "Si gemoy", "Si imut",
+        "Ambatukam", "Ambatron", "super charging 65 wat", "Admin bokep", "Jakarta",
+        "Jawa banget njir", "Emrror", "Kenapa gambar ini tidak mendapatkan banyak penggemar seperti Ronaldo dan Messi",
+        "Skibidi toilet", "Gyatt", "Nasi campur", "Martabak khas surabaya", "Dejek",
+        "Persija", "Makassar", "Indosiar", "18+", "PornHUB", "Cantik", "Surya kretek",
+        "Israel", "Pertamina", "Jawa barat", "Anies baswedan", "Prabowo", "Gibran",
+        "Macan merah", "Kanjut", "Raja iblis", "Ratu iblis", "Ripper", "Hai", "India",
+        "Kecap bangau", "King slot", "Mewing", "Sigma", "Batak", "Sulawesi", "Google chrome",
+        "Facebook", "Instagram", "Babi jember", "Nathan cu a on", "Ernando bakar sate",
+        "4/64GB", "Nokia", "Keyboard samsung", "Gada", "Affilate tiktok", "Casan tesla",
+        "Starlink", "Bokep 4K", "Android", "Fomo", "Airdrop", "Selamat kamu mendapatkan hadiah sebesar 1juta, dipotong pajak 1juta",
+        "Raja cyrpto", "Singa putih", "Nasi kuning", "Rendang Babi", "Iwak", "Holan bakri",
+        "Scam", "Munyuk", "Informasi palsu", "Jawir nih boss", "Banjarmasin slowmo",
+        "No rispek", "Emyu", "Pergi kau suki", "Sunda kontol😂", "Professor yakub pencinta bule",
+        "Nguawor", "Nganggur", "Kitab kripto😂", "Diskotik bogor", "Berteknologi tinggi",
+        "Macan Putih", "Bebek Goreng", "Ayam Geprek", "Singa Putih", "Buku Gambar",
+        "Buku Tulis", "Penggaris", "Papan Tulis", "Gunting Kuku", "Harimau", "Macan Tutul",
+        "Anime", "Macan Ompong", "Es Teh", "TEH JUS", "Marimas Anggur", "Teh Gelas",
+        "Jus Alpukat", "Puntung Rokok", "Ubur Ubur", "Remote TV", "Cacing Buncit",
+        "Monyet Mullet", "Knalpot Mio", "Mie Ayam", "Bakso", "Bakso Cuanki", "Sumpit Gacoan",
+        "Standar Motor", "Pala Mio", "Beat Karbu", "Jerapah", "Badak Hitam", "Lumba Lumba",
+        "Laba Laba Sunda", "Ambatukam", "Ambatron", "Kelly FF", "Kopi ABC", "Kapal Lawut",
+        "Tunggu Kiris", "Keris Tumpul", "Kak Gem", "Uni Bakwan", "Sprei Gratis", "Mejikom",
+        "Kuali Goreng", "Kuah Soto", "Cilok Idaman", "Batagor", "Siomay", "Kue Pancong",
+        "Kipas Angin", "Topi Upacara", "Sepatu Adidas", "RAJA IBLIS", "Banaspati",
+        "Air Cucian Beras", "Remote AC", "Kosong", "Sosok Hitam", "Si Imut", "Chargeran",
+        "Kabel Type C", "Nenek Gayung", "Vampire Ompong", "Bajing Loncat", "Ular Sawah",
+        "Ubi Cilembu", "Pencil 2B", "Korek Api", "Ukelele", "Pecel Lele", "Ondel Ondel",
+        "Kuda Poni", "Kuda Lumping", "Sound System", "Polisi Tidur", "Ban Dalem",
+        "Sempak Bolong", "Kue Pancong", "Seblak", "Seblak Ceker", "Sarimi Ayam Bawang",
+        "Balmond", "Mesin Bubut", "Sate Biawak", "Katak Bhizer", "Kolor Ijo", "Kucing",
+        "Kecebong", "Ikan Mujaer", "Ayam Bakar", "Mie Gacoan", "Kipas Angin", "Panci Warteg",
+        "Jangrik Krispi", "Sikat Gigi", "Mesin Cuci", "Vas Bunga", "Kuntilanak Mewing",
+        "Pocong Ngesot", "Sabun Colek", "Pisau Dapur", "Mio Mirza", "Kaleng Sarden",
+        "Kursi Goyang", "Masako Ayam", "Tutup Botol", "Undur Undur", "Buaya Buntung",
+        "Celana Levis", "Kuda Terbang", "Cicak", "Es Cendol", "Ikan Hiu", "Marimas Jeruk",
+        "Ikan Lohan", "Pohon Kelapa", "Sendal Swalow", "Tikus Got", "Singa Paddlepop",
+        "Ayam Warna Warni", "Minyak Kayu Putih", "Pulpen", "Fresh Care", "Martabak Manis",
+        "Martabak Asin", "Casing HP", "Mangkok Mie Ayam", "Tahu Bulat", "Garpu Siomay",
+        "Lontong Sayur", "Es Kul Kul", "Ayam Rechesee", "Udang Saos Tiram", "Bakso Beranak",
+        "Stang Motor", "Belut Sawah", "Ular Tangga", "Gajah Duduk", "Pisang Goreng",
+        "Spion Motor", "Bubur Ayam", "Tabung Gas", "Bingkai Foto", "Laler", "Rengginang",
+        "Keset Selamat Datang", "Kera Putih", "Sempol Ayam", "Bintang Laut", "Sayur Asem",
+        "Tempe Bacem", "Jepit Jemuran", "Ikan Sapu Sapu", "Royco Sapi", "Tahu Gejrot",
+        "Masako Sapi", "Royco Ayam", "Sayur Lodeh", "Jagung Bakar", "Telur Dadar",
+        "Musang", "Kanebo", "Sabun Cuci Steam", "Kadal Gurun", "Domba Garut", "Sapi Qurban",
+        "Barbie", "Kelereng", "Kuda Catur", "Kue Putu", "Ulat Bulu", "Pangsit",
+        "Bakpau Isi Kacang", "Kecoa Dubia", "Naga Bearbrend", "Pesulap Merah", "Toji Kerupuk",
+        "Pohon Bijak", "Tisu Toilet", "Daun Pisang", "Batu Bata", "Cumi Cumi", "Ale Ale",
+        "Telur Puyuh", "Rujak Asem", "Ceker Babat", "Tuyul Wolfcut", "Handuk Hotel",
+        "Sendal Jepit", "Rokok Fajar", "Ketupat", "Nasi Kuning", "Nasi Uduk", "Kerak Telor",
+        "Nasi Liwet", "Ember Bocor", "jas Hujan", "Bengbeng", "Sapu Ijuk", "Es Tebu",
+        "Makaroni Basah", "Es Campur", "Es Kelapa Muda", "Gayung", "Toilet Duduk",
+        "Ular Piton", "Pohon Beringin", "Jamur Krispi", "Cireng Isi", "Fiesta Nugget",
+        "Cimol Bandung", "Semut Rangrang", "Tongsis", "Kerambol", "Meja Billiard",
+        "Kaos Kaki", "Supra Bapak", "Spion Motor", "Kelelawar", "Laba Laba", "Kecebong",
+        "Semut", "Topeng Monyet", "Buaya Darat", "Ikan Cupang", "Kaki Seribu", "Burung Emprit",
+        "Singa asli Surabaya", "Kulkas Polytron", "Ular kadut", "Pohon beringin", "Janda bolong",
+        "Kominfo", "Tni Amerika"
+      ]
+      function getRandomItem(array) {
+        const randomIndex = Math.floor(Math.random() * array.length);
+        return array[randomIndex];
+      }
+      const result = getRandomItem(items);
+      hupao.sendMessage(from, {text: `${pushname} khodam kamu adalah _${result}_`}, {quoted: fkontak})
+
 }
-teks += ""
-reply(teks) 
-})
 break
 //=================================================//
-case 'cnn':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-CNNNews().then(res => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-reply(teks) 
-})
-break
-//=================================================//
-case 'layarkaca':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-if (!q) return reply('Judul') 
-LayarKaca21(q).then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Film: ${i.film_title}\n`
-teks += `Link: ${i.film_link}\n`
-}
-teks += ``
-reply(teks) 
-})
-break
-//=================================================//
-case 'cnbc':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-CNBCNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'tribun':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-TribunNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'indozone':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-IndozoneNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'kompas':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-KompasNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'detik':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-DetikNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'daily':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-DailyNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'inews':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-iNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-reply(teks) 
-})
-break
-//=================================================//
-case 'okezone':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-OkezoneNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'sindo':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-SindoNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-reply(teks) 
-})
-break
-//=================================================//
-case 'tempo':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-TempoNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case 'antara':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-AntaraNews().then(async(res) => {
-no = 0
-teks = ""
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case "kontan":
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-KontanNews().then(async (res) => {
-teks = ""
-no = 0
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Jenis: ${i.berita_jenis}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case "merdeka":
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-MerdekaNews().then(async (res) => {
-teks = ""
-no = 0
-for (let i of res) {
-no += 1
-teks += `\n• ${no.toString()} •\n`
-teks += `Berita: ${i.berita}\n`
-teks += `Upload: ${i.berita_diupload}\n`
-teks += `Link: ${i.berita_url}\n`
-}
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : res[0].berita_thumb }, caption: teks }, { quoted:m })
-})
-break
-//=================================================//
-case "jalantikus":
-await loading()
-var reis = await JalanTikusMeme()
-teks = ""
-teks += "Jalan Tikus Meme\n\n"
-teks += `Source: ${reis}`
-teks += ""
-hupao.sendMessage(m.chat, { image : { url : reis }, caption: teks }, { quoted:m })
-break
 //=================================================
 case 'smeme':
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
  if (!text) throw `Balas Image Dengan Caption ${prefix + command}`
 if (!quoted) throw `Balas Image Dengan Caption ${prefix + command}`
 if (/image/.test(mime)) {
@@ -2843,7 +3144,8 @@ hupao.sendImageAsSticker(m.chat, kaytid, m, { packname: global.packname, author:
 break
 //=================================================
 case 'toimage': case 'toimg': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 if (!quoted) throw 'Reply Image'
 if (!/webp/.test(mime)) throw `Balas sticker dengan caption *${prefix + command}*`
@@ -2859,20 +3161,10 @@ fs.unlinkSync(ran)
 }
 break
 //=================================================//
-/*case 'tomp3': {
-if (!/video/.test(mime) && !/audio/.test(mime)) throw `Kirim/Reply Video/Audio Yang Ingin Dijadikan MP3 Dengan Caption ${prefix + command}`
-await loading()
-if (!quoted) throw `*Send/Reply the Video/Audio You Want to Use as Audio With Caption* ${prefix + command}`
-let media = await hupao.downloadMediaMessage(quoted)
-let { toAudio } = require('./lib/converter')
-let audio = await toAudio(media, 'mp4')
-hupao.sendMessage(m.chat, {document: audio, mimetype: 'audio/mpeg', fileName: `Convert By ${hupao.user.name}.mp3`}, { quoted : m })
-}
-break*/
-
 case 'tomp3':
     case 'toaudio': {
-    if (!/video/.test(mime) && !/audio/.test(mime)) return replygcxeon(`Send/Reply Video/Audio that you want to make into MP3 with captions ${prefix + command}`)
+         if (groupMute) return 'error'
+    if (!/video/.test(mime) && !/audio/.test(mime)) return reply(`Send/Reply Video/Audio that you want to make into MP3 with captions ${prefix + command}`)
     await loading()
     let media = await hupao.downloadMediaMessage(quoted)
     let { toAudio } = require('./lib/converter.js')
@@ -2880,7 +3172,7 @@ case 'tomp3':
     hupao.sendMessage(m.chat, {
         document: audio,
         mimetype: 'audio/mp3',
-        fileName: `Boedzhanks.mp3`
+        fileName: `${hupao.user.name}.mp3`
     }, {
         quoted: m
     })
@@ -2888,7 +3180,8 @@ case 'tomp3':
 }
 //=================================================//
 case 'toaudio': case 'audio': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 if (!/video/.test(mime) && !/audio/.test(mime)) throw `*Send/Reply the Video/Audio You Want to Use as Audio With Caption* ${prefix + command}`
 if (!quoted) throw `*Send/Reply the Video/Audio You Want to Use as Audio With Caption* ${prefix + command}`
@@ -2900,7 +3193,8 @@ hupao.sendMessage(m.chat, {audio: audio, mimetype: 'audio/mpeg'}, { quoted : m }
 break
 //=================================================//
 case 'tovn': case 'voice': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 if (!/video/.test(mime) && !/audio/.test(mime)) throw `*Reply Video/Audio That You Want To Be VN With Caption* ${prefix + command}`
 if (!quoted) throw `*Reply Video/Audio That You Want To Be VN With Caption* ${prefix + command}`
@@ -2919,41 +3213,65 @@ thumbnail: thumb
 }
 break
 //=================================================//
-/*case 'togif': case 'tomp4': case 'tovideo':{
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
-await loading()
-if (!quoted) throw 'Reply Image'
-if (!/webp/.test(mime)) throw `*reply sticker with caption* *${prefix + command}*`
- let { webp2mp4File } = require('./lib/uploader')
-let media = await hupao.downloadAndSaveMediaMessage(quoted)
-let webpToMp4 = await webp2mp4File(media)
-await hupao.sendMessage(from, { video: { url: webpToMp4.result, caption: 'Convert Webp To Video' }, gifPlayback: true }, {quoted:m})
-await fs.unlinkSync(media)
-}
-break*/
-
 case 'tomp4':
             case 'tovideo': {
+                 if (groupMute) return 'error'
+                if (!quoted) throw 'Reply Image'
                 if (!/webp/.test(mime)) return reply(`Reply sticker with caption *${prefix + command}*`)
                 await loading()
-                let { webp2mp4File } = require('./lib/uploader.js')
-                let media = await hupao.downloadAndSaveMediaMessage(quoted)
-                let webpToMp4 = await webp2mp4File(media)
-                await hupao.sendMessage(m.chat, {
-                    video: {
-                        url: webpToMp4.result,
-                        caption: 'Convert Webp To Video'
+                let media = await hupao.downloadAndSaveMediaMessage(quoted, new Date *1)
+                await exec(`convert ${media} './temp/frames.png'`, (error, stdout, stderr) => {
+                    if (error) {
+                      console.error(`exec error: ${error}`);
+                      return;
                     }
-                }, {
-                    quoted: m
-                })
-                await fs.unlinkSync(media)
-
+                    console.log(`stdout: ${stdout}`);
+                    console.error(`stderr: ${stderr}`);
+                        exec(`ffmpeg -i './temp/frames-%0d.png' -c:v libx264 -pix_fmt yuvj420p -vf "fps=30" "out.mp4"`)
+                  });
+                  setTimeout(() => {
+                  outputFile = fs.readFileSync('./out.mp4')
+                  hupao.sendMessage(from, {video: outputFile, caption: 'Convert Webp To Video' }, {quoted: fkontak})
+                  fs.unlinkSync(media)
+                  fs.unlinkSync('./out.mp4')
+                  const frameFiles = fs.readdirSync('./temp').filter(file => file.startsWith('frames-') && file.endsWith('.png'));
+                        for (const file of frameFiles) {
+                        fs.unlinkSync(path.join('./temp', file));
+                     }
+                    }, 5000)
             }
             break
+                case 'togif': {
+                     if (groupMute) return 'error'
+                    if (!quoted) throw 'Reply Image'
+                    if (!/webp/.test(mime)) return reply(`Reply sticker with caption *${prefix + command}*`)
+                    await loading()
+                    let media = await hupao.downloadAndSaveMediaMessage(quoted, new Date *1)
+                    await exec(`convert ${media} './temp/frames.png'`, (error, stdout, stderr) => {
+                        if (error) {
+                          console.error(`exec error: ${error}`);
+                          return;
+                        }
+                        console.log(`stdout: ${stdout}`);
+                        console.error(`stderr: ${stderr}`);
+                            exec(`ffmpeg -i './temp/frames-%0d.png' -c:v libx264 -pix_fmt yuvj420p -vf "fps=30" "out.mp4"`)
+                      });
+                      setTimeout(() => {
+                      outputFile = fs.readFileSync('./out.mp4')
+                      hupao.sendMessage(from, {video: outputFile, caption: 'Convert Webp To Gif', gifPlayback: true }, {quoted: fkontak})
+                      fs.unlinkSync(media)
+                      fs.unlinkSync('./out.mp4')
+                      const frameFiles = fs.readdirSync('./temp').filter(file => file.startsWith('frames-') && file.endsWith('.png'));
+                            for (const file of frameFiles) {
+                            fs.unlinkSync(path.join('./temp', file));
+                         }
+                        }, 5000)
+                }
+                    break
 //=================================================//
 case 'tourl': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 if (!/video/.test(mime) && !/image/.test(mime)) throw `*Send/Reply the Video/Image With Caption* ${prefix + command}`
 if (!quoted) throw `*Send/Reply the Video/Image Caption* ${prefix + command}`
@@ -2971,7 +3289,8 @@ await fs.unlinkSync(media)
 break
 //=================================================//
 case "quotes":
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  var resi = await Quotes()
 teks = `\nAuthor: ${resi.author}\n`
@@ -2981,6 +3300,7 @@ reply(teks)
 break
 //=================================================//
 case "darkjoke": case "darkjokes":
+     if (groupMute) return 'error'
 await loading()
  var ress = await Darkjokes()
 teks = "*Darkjokes*"
@@ -2988,7 +3308,8 @@ hupao.sendMessage(m.chat, { image : { url : ress }, caption: teks }, { quoted:m 
 break
 //=================================================//
 case 'emojimix': { 
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  let [emoji1, emoji2] = text.split`+`
 if (!emoji1) throw `Example : ${prefix + command} 😅+🤔`
@@ -3002,7 +3323,8 @@ await fs.unlinkSync(encmedia)
 break
 //=================================================//
 case 'emojimix2': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 😅`
 let anu = await fetchJson(`https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&contentfilter=high&media_filter=png_transparent&component=proactive&collection=emoji_kitchen_v5&q=${encodeURIComponent(text)}`)
@@ -3014,269 +3336,294 @@ await fs.unlinkSync(encmedia)
 break
 //=================================================//
 case 'artimimpi': case 'tafsirmimpi': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} belanja`
  let anu = await primbon.tafsir_mimpi(text)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Mimpi :* ${anu.message.mimpi}\n⭔ *Arti :* ${anu.message.arti}\n⭔ *Solusi :* ${anu.message.solusi}`, m)
+ hupao.sendText(from, `❏*Mimpi :* ${anu.message.mimpi}\n❏ *Arti :* ${anu.message.arti}\n❏ *Solusi :* ${anu.message.solusi}`, m)
 }
 break
 //=================================================//
 case 'ramalanjodoh': case 'ramaljodoh': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 7, 7, 2005, Putri, 16, 11, 2004`
  let [nama1, tgl1, bln1, thn1, nama2, tgl2, bln2, thn2] = text.split`,`
  let anu = await primbon.ramalan_jodoh(nama1, tgl1, bln1, thn1, nama2, tgl2, bln2, thn2)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama Anda :* ${anu.message.nama_anda.nama}\n⭔ *Lahir Anda :* ${anu.message.nama_anda.tgl_lahir}\n⭔ *Nama Pasangan :* ${anu.message.nama_pasangan.nama}\n⭔ *Lahir Pasangan :* ${anu.message.nama_pasangan.tgl_lahir}\n⭔ *Hasil :* ${anu.message.result}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Nama Anda :* ${anu.message.nama_anda.nama}\n❏ *Lahir Anda :* ${anu.message.nama_anda.tgl_lahir}\n❏ *Nama Pasangan :* ${anu.message.nama_pasangan.nama}\n❏ *Lahir Pasangan :* ${anu.message.nama_pasangan.tgl_lahir}\n❏ *Hasil :* ${anu.message.result}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'artinama': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks`
  let anu = await primbon.arti_nama(text)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Arti :* ${anu.message.arti}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Arti :* ${anu.message.arti}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'kecocokannama': case 'cocoknama': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 7, 7, 2005`
  let [nama, tgl, bln, thn] = text.split`,`
  let anu = await primbon.kecocokan_nama(nama, tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Life Path :* ${anu.message.life_path}\n⭔ *Destiny :* ${anu.message.destiny}\n⭔ *Destiny Desire :* ${anu.message.destiny_desire}\n⭔ *Personality :* ${anu.message.personality}\n⭔ *Persentase :* ${anu.message.persentase_kecocokan}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Life Path :* ${anu.message.life_path}\n❏ *Destiny :* ${anu.message.destiny}\n❏ *Destiny Desire :* ${anu.message.destiny_desire}\n❏ *Personality :* ${anu.message.personality}\n❏ *Persentase :* ${anu.message.persentase_kecocokan}`, m)
 }
 break
 //=================================================//
 case 'kecocokanpasangan': case 'cocokpasangan': case 'pasangan': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks|Putri`
  let [nama1, nama2] = text.split`|`
  let anu = await primbon.kecocokan_nama_pasangan(nama1, nama2)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendImage(from,  anu.message.gambar, `⭔ *Nama Anda :* ${anu.message.nama_anda}\n⭔ *Nama Pasangan :* ${anu.message.nama_pasangan}\n⭔ *Sisi Positif :* ${anu.message.sisi_positif}\n⭔ *Sisi Negatif :* ${anu.message.sisi_negatif}`, m)
+ hupao.sendImage(from,  anu.message.gambar, `❏ *Nama Anda :* ${anu.message.nama_anda}\n❏ *Nama Pasangan :* ${anu.message.nama_pasangan}\n❏ *Sisi Positif :* ${anu.message.sisi_positif}\n❏ *Sisi Negatif :* ${anu.message.sisi_negatif}`, m)
 }
 break
 //=================================================//
 case 'jadianpernikahan': case 'jadiannikah': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 6, 12, 2020`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.tanggal_jadian_pernikahan(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Tanggal Pernikahan :* ${anu.message.tanggal}\n⭔ *karakteristik :* ${anu.message.karakteristik}`, m)
+ hupao.sendText(from, `❏ *Tanggal Pernikahan :* ${anu.message.tanggal}\n❏ *karakteristik :* ${anu.message.karakteristik}`, m)
 }
 break
 //=================================================//
 case 'sifatusaha': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!ext)throw `Example : ${prefix+ command} 28, 12, 2021`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.sifat_usaha_bisnis(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Lahir :* ${anu.message.hari_lahir}\n⭔ *Usaha :* ${anu.message.usaha}`, m)
+ hupao.sendText(from, `❏ *Lahir :* ${anu.message.hari_lahir}\n❏ *Usaha :* ${anu.message.usaha}`, m)
 }
 break
 //=================================================//
 case 'rejeki': case 'rezeki': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.rejeki_hoki_weton(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Lahir :* ${anu.message.hari_lahir}\n⭔ *Rezeki :* ${anu.message.rejeki}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Lahir :* ${anu.message.hari_lahir}\n❏ *Rezeki :* ${anu.message.rejeki}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'pekerjaan': case 'kerja': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.pekerjaan_weton_lahir(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Lahir :* ${anu.message.hari_lahir}\n⭔ *Pekerjaan :* ${anu.message.pekerjaan}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Lahir :* ${anu.message.hari_lahir}\n❏ *Pekerjaan :* ${anu.message.pekerjaan}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'ramalannasib': case 'ramalnasib': case 'nasib': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.ramalan_nasib(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Analisa :* ${anu.message.analisa}\n⭔ *Angka Akar :* ${anu.message.angka_akar}\n⭔ *Sifat :* ${anu.message.sifat}\n⭔ *Elemen :* ${anu.message.elemen}\n⭔ *Angka Keberuntungan :* ${anu.message.angka_keberuntungan}`, m)
+ hupao.sendText(from, `❏ *Analisa :* ${anu.message.analisa}\n❏ *Angka Akar :* ${anu.message.angka_akar}\n❏ *Sifat :* ${anu.message.sifat}\n❏ *Elemen :* ${anu.message.elemen}\n❏ *Angka Keberuntungan :* ${anu.message.angka_keberuntungan}`, m)
 }
 break
 //=================================================//
 case 'potensipenyakit': case 'penyakit': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.cek_potensi_penyakit(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Analisa :* ${anu.message.analisa}\n⭔ *Sektor :* ${anu.message.sektor}\n⭔ *Elemen :* ${anu.message.elemen}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Analisa :* ${anu.message.analisa}\n❏ *Sektor :* ${anu.message.sektor}\n❏ *Elemen :* ${anu.message.elemen}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'artitarot': case 'tarot': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.arti_kartu_tarot(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendImage(from, anu.message.image, `⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Simbol Tarot :* ${anu.message.simbol_tarot}\n⭔ *Arti :* ${anu.message.arti}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendImage(from, anu.message.image, `❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Simbol Tarot :* ${anu.message.simbol_tarot}\n❏ *Arti :* ${anu.message.arti}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'fengshui': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 1, 2005\n\nNote : ${prefix + command} Nama, gender, tahun lahir\nGender : 1 untuk laki-laki & 2 untuk perempuan`
  let [nama, gender, tahun] = text.split`,`
  let anu = await primbon.perhitungan_feng_shui(nama, gender, tahun)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Lahir :* ${anu.message.tahun_lahir}\n⭔ *Gender :* ${anu.message.jenis_kelamin}\n⭔ *Angka Kua :* ${anu.message.angka_kua}\n⭔ *Kelompok :* ${anu.message.kelompok}\n⭔ *Karakter :* ${anu.message.karakter}\n⭔ *Sektor Baik :* ${anu.message.sektor_baik}\n⭔ *Sektor Buruk :* ${anu.message.sektor_buruk}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Lahir :* ${anu.message.tahun_lahir}\n❏ *Gender :* ${anu.message.jenis_kelamin}\n❏ *Angka Kua :* ${anu.message.angka_kua}\n❏ *Kelompok :* ${anu.message.kelompok}\n❏ *Karakter :* ${anu.message.karakter}\n❏ *Sektor Baik :* ${anu.message.sektor_baik}\n❏ *Sektor Buruk :* ${anu.message.sektor_buruk}`, m)
 }
 break
 //=================================================//
 case 'haribaik': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.petung_hari_baik(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Kala Tinantang :* ${anu.message.kala_tinantang}\n⭔ *Info :* ${anu.message.info}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Kala Tinantang :* ${anu.message.kala_tinantang}\n❏ *Info :* ${anu.message.info}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'harisangar': case 'taliwangke': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.hari_sangar_taliwangke(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Hasil :* ${anu.message.result}\n⭔ *Info :* ${anu.message.info}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Hasil :* ${anu.message.result}\n❏ *Info :* ${anu.message.info}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'harinaas': case 'harisial': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.primbon_hari_naas(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Hari Lahir :* ${anu.message.hari_lahir}\n⭔ *Tanggal Lahir :* ${anu.message.tgl_lahir}\n⭔ *Hari Naas :* ${anu.message.hari_naas}\n⭔ *Info :* ${anu.message.catatan}\n⭔ *Catatan :* ${anu.message.info}`, m)
+ hupao.sendText(from, `❏ *Hari Lahir :* ${anu.message.hari_lahir}\n❏ *Tanggal Lahir :* ${anu.message.tgl_lahir}\n❏ *Hari Naas :* ${anu.message.hari_naas}\n❏ *Info :* ${anu.message.catatan}\n❏ *Catatan :* ${anu.message.info}`, m)
 }
 break
 //=================================================//
 case 'nagahari': case 'harinaga': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.rahasia_naga_hari(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Hari Lahir :* ${anu.message.hari_lahir}\n⭔ *Tanggal Lahir :* ${anu.message.tgl_lahir}\n⭔ *Arah Naga Hari :* ${anu.message.arah_naga_hari}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Hari Lahir :* ${anu.message.hari_lahir}\n❏ *Tanggal Lahir :* ${anu.message.tgl_lahir}\n❏ *Arah Naga Hari :* ${anu.message.arah_naga_hari}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'arahrejeki': case 'arahrezeki': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.primbon_arah_rejeki(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Hari Lahir :* ${anu.message.hari_lahir}\n⭔ *tanggal Lahir :* ${anu.message.tgl_lahir}\n⭔ *Arah Rezeki :* ${anu.message.arah_rejeki}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Hari Lahir :* ${anu.message.hari_lahir}\n❏ *tanggal Lahir :* ${anu.message.tgl_lahir}\n❏ *Arah Rezeki :* ${anu.message.arah_rejeki}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'peruntungan': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 7, 7, 2005, 2022\n\nNote : ${prefix + command} Nama, tanggal lahir, bulan lahir, tahun lahir, untuk tahun`
  let [nama, tgl, bln, thn, untuk] = text.split`,`
  let anu = await primbon.ramalan_peruntungan(nama, tgl, bln, thn, untuk)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Peruntungan Tahun :* ${anu.message.peruntungan_tahun}\n⭔ *Hasil :* ${anu.message.result}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Peruntungan Tahun :* ${anu.message.peruntungan_tahun}\n❏ *Hasil :* ${anu.message.result}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'weton': case 'wetonjawa': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 7, 7, 2005`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.weton_jawa(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Tanggal :* ${anu.message.tanggal}\n⭔ *Jumlah Neptu :* ${anu.message.jumlah_neptu}\n⭔ *Watak Hari :* ${anu.message.watak_hari}\n⭔ *Naga Hari :* ${anu.message.naga_hari}\n⭔ *Jam Baik :* ${anu.message.jam_baik}\n⭔ *Watak Kelahiran :* ${anu.message.watak_kelahiran}`, m)
+ hupao.sendText(from, `❏ *Tanggal :* ${anu.message.tanggal}\n❏ *Jumlah Neptu :* ${anu.message.jumlah_neptu}\n❏ *Watak Hari :* ${anu.message.watak_hari}\n❏ *Naga Hari :* ${anu.message.naga_hari}\n❏ *Jam Baik :* ${anu.message.jam_baik}\n❏ *Watak Kelahiran :* ${anu.message.watak_kelahiran}`, m)
 }
 break
 //=================================================//
 case 'sifat': case 'karakter': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 7, 7, 2005`
  let [nama, tgl, bln, thn] = text.split`,`
  let anu = await primbon.sifat_karakter_tanggal_lahir(nama, tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Garis Hidup :* ${anu.message.garis_hidup}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Garis Hidup :* ${anu.message.garis_hidup}`, m)
 }
 break
 //=================================================//
 case 'keberuntungan': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} Boedzhanks, 7, 7, 2005`
  let [nama, tgl, bln, thn] = text.split`,`
  let anu = await primbon.potensi_keberuntungan(nama, tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Nama :* ${anu.message.nama}\n⭔ *Lahir :* ${anu.message.tgl_lahir}\n⭔ *Hasil :* ${anu.message.result}`, m)
+ hupao.sendText(from, `❏ *Nama :* ${anu.message.nama}\n❏ *Lahir :* ${anu.message.tgl_lahir}\n❏ *Hasil :* ${anu.message.result}`, m)
 }
 break
 //=================================================//
 case 'memancing': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 12, 1, 2022`
  let [tgl, bln, thn] = text.split`,`
  let anu = await primbon.primbon_memancing_ikan(tgl, bln, thn)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Tanggal :* ${anu.message.tgl_memancing}\n⭔ *Hasil :* ${anu.message.result}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Tanggal :* ${anu.message.tgl_memancing}\n❏ *Hasil :* ${anu.message.result}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'masasubur': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} 12, 1, 2022, 28\n\nNote : ${prefix + command} hari pertama menstruasi, siklus`
  let [tgl, bln, thn, siklus] = text.split`,`
  let anu = await primbon.masa_subur(tgl, bln, thn, siklus)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Hasil :* ${anu.message.result}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Hasil :* ${anu.message.result}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'zodiak': case 'zodiac': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix+ command} 7 7 2005`
  let zodiak = [
@@ -3307,22 +3654,24 @@ await loading()
  let zodiac = await getZodiac(birth[1], birth[2])
  let anu = await primbon.zodiak(zodiac)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Zodiak :* ${anu.message.zodiak}\n⭔ *Nomor :* ${anu.message.nomor_keberuntungan}\n⭔ *Aroma :* ${anu.message.aroma_keberuntungan}\n⭔ *Planet :* ${anu.message.planet_yang_mengitari}\n⭔ *Bunga :* ${anu.message.bunga_keberuntungan}\n⭔ *Warna :* ${anu.message.warna_keberuntungan}\n⭔ *Batu :* ${anu.message.batu_keberuntungan}\n⭔ *Elemen :* ${anu.message.elemen_keberuntungan}\n⭔ *Pasangan Zodiak :* ${anu.message.pasangan_zodiak}\n⭔ *Catatan :* ${anu.message.catatan}`, m)
+ hupao.sendText(from, `❏ *Zodiak :* ${anu.message.zodiak}\n❏ *Nomor :* ${anu.message.nomor_keberuntungan}\n❏ *Aroma :* ${anu.message.aroma_keberuntungan}\n❏ *Planet :* ${anu.message.planet_yang_mengitari}\n❏ *Bunga :* ${anu.message.bunga_keberuntungan}\n❏ *Warna :* ${anu.message.warna_keberuntungan}\n❏ *Batu :* ${anu.message.batu_keberuntungan}\n❏ *Elemen :* ${anu.message.elemen_keberuntungan}\n❏ *Pasangan Zodiak :* ${anu.message.pasangan_zodiak}\n❏ *Catatan :* ${anu.message.catatan}`, m)
 }
 break
 //=================================================//
 case 'shio': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} tikus\n\nNote : For Detail https://primbon.com/shio.htm`
  let anu = await primbon.shio(text)
  if (anu.status == false) return m.reply(anu.message)
- hupao.sendText(from, `⭔ *Hasil :* ${anu.message}`, m)
+ hupao.sendText(from, `❏ *Hasil :* ${anu.message}`, m)
 }
 break
 //=================================================//
 case 'setcmd': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (!m.quoted) throw 'Reply Pesan!'
 if (!m.quoted.fileSha256) throw 'SHA256 Hash Missing'
@@ -3341,7 +3690,8 @@ m.reply(`Done!`)
 break
 //=================================================//
 case 'delcmd': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (!m.quoted) throw 'Reply Pesan!'
 let hash = m.quoted.fileSha256.toString('base64')
@@ -3353,7 +3703,8 @@ m.reply(`Done!`)
 break
 //=================================================//
 case 'listcmd': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
 let teks = `list cmd`
 hupao.sendText(from, teks, m, { mentions: Object.values(global.db.data.sticker).map(x => x.mentionedJid).reduce((a,b) => [...a, ...b], []) })
@@ -3361,7 +3712,8 @@ hupao.sendText(from, teks, m, { mentions: Object.values(global.db.data.sticker).
 break
 //=================================================//
 case 'addpdf':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Nama pdf apa')
 let teks = `${text}`
@@ -3378,7 +3730,8 @@ reply(`Sukses Menambahkan Pdf\nCek dengan cara ${prefix}listpdf`)
 break
 //=================================================//
 case 'delpdf':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan query')
 let teks = `${text}`
@@ -3394,11 +3747,12 @@ reply(`Sukses delete pdf ${teks}`)
 break
 //=================================================//
 case 'listpdf': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let teksoooo = '┌──⭓「 *LIST PDF* 」\n│\n'
 for (let x of docunye) {
-teksoooo = `│⭔ ${x}\n`
+teksoooo = `│❏ ${x}\n`
 }
 teksoooo = `│\n└────────────⭓\n\n*Total ada : ${docunye.length} \n\n Contoh 1 : sendpdf Boedzhanks + sambil reply pesan target* \n\n Contoh 2 : yopdf Boedzhanks`
 m.reply(teksoooo)
@@ -3406,7 +3760,8 @@ m.reply(teksoooo)
 break
 //=================================================//
 case 'yopdf':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let teks = `${text}`
 {
@@ -3416,7 +3771,8 @@ hupao.sendMessage(from, { document: fs.readFileSync(`./database/Docu/${teks}.pdf
 break
 //=================================================//
 case 'sendpdf': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (!text) return m.reply(`Lah, Reply Chat Orang Nya Masukin Text Yang Ada Di Listpdf`)
 let teks = `${text}`
@@ -3428,7 +3784,8 @@ m.reply(`Sukses Mengirim Pesan Pdf Ke ${m.quoted.sender}`)
 break
 //=================================================//
 case 'addzip':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Nama zip apa')
 let teks = `${text}`
@@ -3445,7 +3802,8 @@ reply(`Sukses Menambahkan zip\nCek dengan cara ${prefix}listzip`)
 break
 //=================================================//
 case 'delzip':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan text yang ada di list zip')
 let teks = `${text}`
@@ -3461,11 +3819,12 @@ reply(`Sukses delete zip ${teks}`)
 break
 //=================================================//
 case 'listzip': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let teksooooo = '┌──⭓「 *LIST ZIP* 」\n│\n'
 for (let x of zipnye) {
-teksooooo = `│⭔ ${x}\n`
+teksooooo = `│❏ ${x}\n`
 }
 teksooooo = `│\n└────────────⭓\n\n*Total ada : ${zipnye.length} \n\n Contoh 1 : sendzip Boedzhanks + sambil reply pesan target* \n\n Contoh 2 : yozip Boedzhanks`
 m.reply(teksooooo)
@@ -3473,7 +3832,8 @@ m.reply(teksooooo)
 break
 //=================================================//
 case 'yozip':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan text yang ada di list zip')
 let teks = `${text}`
@@ -3484,7 +3844,8 @@ hupao.sendMessage(from, { document: fs.readFileSync(`./database/zip/${teks}.zip`
 break
 //=================================================//
 case 'sendzip': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (!text) return m.reply(`Lah, Reply Chat Orang Nya Masukin Text Yang Ada Di Listzip`)
 let teks = `${text}`
@@ -3496,7 +3857,8 @@ m.reply(`Sukses Mengirim Pesan Zip Ke ${m.quoted.sender}`)
 break
 //=================================================//
 case 'addapk':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Nama apk apa')
 let teks = `${text}`
@@ -3513,7 +3875,8 @@ reply(`Sukses Menambahkan apk\nCek dengan cara ${prefix}listapk`)
 break
 //=================================================//
 case 'delapk':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan text yang ada di listapk')
 let teks = `${text}`
@@ -3529,11 +3892,12 @@ reply(`Sukses delete Apk ${teks}`)
 break
 //=================================================//
 case 'listapk': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+ if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let teksoooooo = '┌──⭓「 *LIST APK* 」\n│\n'
 for (let x of apknye) {
-teksoooooo = `│⭔ ${x}\n`
+teksoooooo = `│❏ ${x}\n`
 }
 teksoooooo = `│\n└────────────⭓\n\n*Total ada : ${apknye.length} \n\n Contoh 1 : sendapk Boedzhanks + sambil reply pesan target* \n\n Contoh 2 : yoapk Boedzhanks`
 m.reply(teksoooooo)
@@ -3541,7 +3905,8 @@ m.reply(teksoooooo)
 break
 //=================================================//
 case 'yoapk':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan text yang ada di listapk')
 let teks = `${text}`
@@ -3552,7 +3917,8 @@ hupao.sendMessage(from, { document: fs.readFileSync(`./database/apk/${teks}.apk`
 break
 //=================================================//
 case 'sendapk': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (!text) return m.reply(`Lah, Reply Chat Orang Nya Masukin Text Yang Ada Di Listzip`)
 let teks = `${text}`
@@ -3564,7 +3930,8 @@ m.reply(`Sukses Mengirim Pesan Apk Ke ${m.quoted.sender}`)
 break
 //=================================================//
 case 'addvn':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Nama audionya apa')
 if (vnnye.includes(text)) return reply("Nama tersebut sudah di gunakan")
@@ -3578,7 +3945,8 @@ reply(`Sukses Menambahkan Audio\nCek dengan cara ${prefix}listvn`)
 break
 //=================================================//
 case 'delvn':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (args.length < 1) return reply('Masukan query')
 if (!vnnye.includes(text)) return reply("Nama tersebut tidak ada di dalam data base")
@@ -3591,18 +3959,21 @@ reply(`Sukses delete vn ${text}`)
 break
 //=================================================//
 case 'listvn':{
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  let teksooo = '┌──⭓「 *LIST VN* 」\n│\n'
 for (let x of vnnye) {
-teksooo += `│⭔ ${x}\n`
+teksooo += `│❏ ${x}\n`
 }
 reply(teksooo)
 }
 break
 //=================================================//
 case 'addmsg': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
  if (!m.quoted) throw 'Reply Pesan Yang Ingin Disave Di Database'
  if (!text) throw `Example : ${prefix + command} nama file`
@@ -3618,7 +3989,8 @@ Lihat list Pesan Dengan ${prefix}listmsg`)
 break
 //=================================================//
 case 'sendlist': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
  if (!text) throw `Example : ${prefix + command} file name\n\nLihat list pesan dengan ${prefix}listmsg`
  let msgs = global.db.data.database
@@ -3629,7 +4001,8 @@ await loading()
 break
 //=================================================//
 case 'listmsg': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  let msgs = global.db.data.database
 let seplit = Object.entries(global.db.data.database).map(([nama, isi]) => { return { nama, ...isi } })
@@ -3642,7 +4015,8 @@ m.reply(teks)
 break
 //=================================================//
 case 'delmsg': case 'deletemsg': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let msgs = global.db.data.database
 if (!(text.toLowerCase() in msgs)) return m.reply(`'${text}' tidak terdaftar didalam list pesan`)
@@ -3652,7 +4026,8 @@ m.reply(`Berhasil menghapus '${text}' dari list pesan`)
 break
 //=================================================//
 case 'getmsg': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 await loading()
  if (!text) throw `Example : ${prefix + command} file name\n\nLihat list pesan dengan ${prefix}listmsg`
  let msgs = global.db.data.database
@@ -3662,14 +4037,15 @@ await loading()
 break
 //=================================================//
 case 'google': {
- if (!text) throw `Example : ${prefix + command} fatih arridho`
+     if (groupMute) return 'error'
+ if (!text) throw `Example : ${prefix + command} boedzhanks`
 let google = require('google-it')
 google({'query': text}).then(res => {
 let teks = `Google Search From : ${text}\n\n`
 for (let g of res) {
-teks += `⭔ *Title* : ${g.title}\n`
-teks += `⭔ *Description* : ${g.snippet}\n`
-teks += `⭔ *Link* : ${g.link}\n\n────────────────────────\n\n`
+teks += `❏ *Title* : ${g.title}\n`
+teks += `❏ *Description* : ${g.snippet}\n`
+teks += `❏ *Link* : ${g.link}\n\n────────────────────────\n\n`
 } 
 m.reply(teks)
 })
@@ -3677,6 +4053,7 @@ m.reply(teks)
 break
 //=================================================//
 case 'pembayaran': case 'nope': case 'listpayment': case 'payment':{
+     if (groupMute) return 'error'
 await loading()
 m.reply(`
 ◎ © Hay Kak ${pushname} 👋
@@ -3704,6 +4081,7 @@ a.n Hardiansyah Ramadhani
 break
 //=================================================//
 case 'ppcp': {
+     if (groupMute) return 'error'
 await loading()
 let anu = await fetchJson('https://raw.githubusercontent.com/iamriz7/kopel_/main/kopel.json')
 let random = anu[Math.floor(Math.random() * anu.length)]
@@ -3713,6 +4091,7 @@ hupao.sendMessage(from, { image: { url: random.female }, caption: `Couple Female
 break
 //=================================================//
 case 'coffe': case 'kopi': {
+     if (groupMute) return 'error'
 await loading()
 hupao.sendMessage(from, {image: { url: 'https://coffee.alexflipnote.dev/random' },
 caption: `☕ Random Coffe`},{quoted:m})
@@ -3720,7 +4099,8 @@ caption: `☕ Random Coffe`},{quoted:m})
 break
 //=================================================//
 case 'getname': {
-if (!isCreator) return m.reply('*khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (qtod === "true") {
 namenye = await hupao.getName(m.quoted.sender)
@@ -3732,7 +4112,8 @@ hupao.sendMessage(from, {text:"Reply orangnya"}, {quoted:m})
 break
 //=================================================//
 case 'getpic': {
-if (!isCreator) return m.reply('*khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 if (qtod === "true") {
 try {
@@ -3751,41 +4132,12 @@ hupao.sendMessage(from, { image : { url : pporgs }, caption:`Done` }, {quoted:m}
 }
 }
 break
-case 'yts': case 'ytsearch':{
-if (isBan) return reply('Lu di ban kocak awokwok') 
-if (!text) reply(`Gunakan dengan cara ${prefix+command} *text*\n\n_Contoh_\n\n${prefix+command} Boedzhanks Store`)
-let reso = await yts(`${text}`)
-let aramat = reso.all
-var tbuff = await getBuffer(aramat[0].image)
-let teks = aramat.map(v => {
-switch (v.type) {
-        case 'video': return `
-📛 Title : *${v.title}* 
-⏰ Durasi: ${v.timestamp}
-🚀 Diupload ${v.ago}
-😎 Views : ${v.views}
-🌀 Url : ${v.url}
-`.trim()
-        case 'channel': return `
-📛 Channel : *${v.name}*
-🌀 Url : ${v.url}
-👻 Subscriber : ${v.subCountLabel} (${v.subCount})
-🎦 Total Video : ${v.videoCount}
-`.trim()
-}
-}).filter(v => v).join('\n----------------------------------------\n')
 
-hupao.sendMessage(m.chat, { image: tbuff, caption: teks }, { quoted: m })
-
- .catch((err) => {
-reply("Not found")
-})
-}
-break
 
 //=================================================//
 case "setppbot": {
-if (!isCreator) return m.reply(mess.owner)
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply(mess.owner)
 if (!quoted) return m.reply(`Kirim/Reply Image Dengan Caption ${prefix + command}`)
 if (!/image/.test(mime)) return m.reply(`Kirim/Reply Image Dengan Caption ${prefix + command}`)
 if (/webp/.test(mime)) return m.reply(`Kirim/Reply Image Dengan Caption ${prefix + command}`)
@@ -3817,8 +4169,9 @@ m.reply(`Sukses`)
 }
         break
         case 'pppanjang': case 'setppbot2':{
+             if (groupMute) return 'error'
 if (isBan) return reply('Lu di ban kocak awokwok') 
-if (!isCreator) return reply('Fitur Khusus owner!')
+if (!isOwner) return reply('Fitur Khusus owner!')
 if (!quoted) return reply(`Reply foto dgn caption ${prefix + command}`)
 if (!/image/.test(mime)) return reply(`Reply foto dgn caption ${prefix + command}`)
 if (/webp/.test(mime)) return reply(`Reply foto dgn caption ${prefix + command}`)
@@ -3844,7 +4197,8 @@ reply("Done!!!")
 break
 //=================================================//
 case 'setppgroup': case 'setppgrup': case 'setppgc': {
-if (!isCreator) return m.reply('khusus creator bot')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('khusus creator bot')
 if (!m.isGroup) throw mess.group
 if (!isAdmins) throw mess.admin
 if (!/image/.test(mime)) throw `Kirim/Reply Image Dengan Caption ${prefix + command}`
@@ -3856,7 +4210,8 @@ m.reply('done')
 break
 //=================================================//
 case 'block': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let users = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.updateBlockStatus(users, 'block').then((res) => m.reply(jsonformat(res))).catch((err) => m.reply(jsonformat(err)))
@@ -3864,7 +4219,8 @@ await hupao.updateBlockStatus(users, 'block').then((res) => m.reply(jsonformat(r
 break
 //=================================================//
 case 'unblock': {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading()
 let users = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text.replace(/[^0-9]/g, '')+'@s.whatsapp.net'
 await hupao.updateBlockStatus(users, 'unblock').then((res) => m.reply(jsonformat(res))).catch((err) => m.reply(jsonformat(err)))
@@ -3872,6 +4228,7 @@ await hupao.updateBlockStatus(users, 'unblock').then((res) => m.reply(jsonformat
 break
 //=================================================//
 case 'tiktokstalk': {
+     if (groupMute) return 'error'
     if (!text) return reply(`Username? `)
 let res = await dylux.ttStalk(args[0])
 let txt = `
@@ -3889,6 +4246,7 @@ await hupao.sendMessage(m.chat, {image: { url: res.profile}, caption: txt}, {quo
 break
 
             case 'igstalk': {
+                 if (groupMute) return 'error'
                 if (!text) return reply(`Enter Instagram Username\n\nExample: ${prefix + command} boedzhanks`)
                     let res = await dylux.igStalk(text)
                     let te = `
@@ -3908,6 +4266,7 @@ break
 case 'weather':
 case 'cuaca' :
     {
+         if (groupMute) return 'error'
     if (!text) return reply('Lokasi mana?')
                 let wdata = await axios.get(
                     `https://api.openweathermap.org/data/2.5/weather?q=${text}&units=metric&appid=060a6bcfa19809c2cd4d97a212b19273&language=en`
@@ -3937,7 +4296,8 @@ case 'cuaca' :
 
 //=================================================
 case 'afk': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 let user = global.db.data.users[m.sender]
 user.afkTime = + new Date
 user.afkReason = text
@@ -3946,7 +4306,8 @@ m.reply(`${pushname}... Telah Afk Dengan Alasan ${text ? ': ' + text : ''}`)
 break
 //=================================================
 case 'buatsw':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 let men = [];
 for (let x of pengguna) {
 men.push(x)
@@ -3973,7 +4334,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case "buatswimage":{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
  if (!quoted) throw `Balas image Dengan Caption ${prefix + command}`
 if (!/image/.test(mime)) throw `Balas image dengan caption *${prefix + command}*`
@@ -3984,7 +4346,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case "buatswvideo":{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
  if (!quoted) throw `Balas video Dengan Caption ${prefix + command}`
 if (!/video/.test(mime)) throw `Balas video dengan caption *${prefix + command}*`
@@ -3995,7 +4358,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case 'swin':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
 if (!text) return m.reply(`masukin text nya`)
 hupao.sendMessage('status@broadcast', {
@@ -4010,7 +4374,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case 'vnsw':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
 if (!text) return m.reply(`masukin text nya yang ada di database listvn`)
 var huy = fs.readFileSync(`./database/Audio/${text}.mp3`)
@@ -4023,7 +4388,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case 'inisw':{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
 if (!text) return m.reply(`masukin text nya yang ada di database listvn`)
 var buu = fs.readFileSync(`./database/Audio/${text}.mp3`)
@@ -4041,7 +4407,8 @@ m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada D
 break
 //=================================================
 case 'hapusdb':
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
 if (!args[0]) return m.reply(`Penggunaan ${prefix+command} nomor\nContoh ${prefix+command} 6281214281312@s.whatsapp.net`)
 yakiii = text.split("|")[0].replace(/[^0-9]/g, '')
@@ -4052,7 +4419,8 @@ m.reply(`Nomor ${yakiii} Telah Di Hapus Dari Database!!!`)
 break
 //=================================================//
 case 'listdb':
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
 if (isBan) return m.reply('*Lu Di Ban Owner*')
  teksoooo = '*List Database*\n\n'
@@ -4065,7 +4433,8 @@ break
 //=================================================
 case "buatswptv":
 {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
  if (!m.quoted) throw `Balas Video Dengan Caption ${prefix + command}`
 var ppt = m.quoted
@@ -4081,7 +4450,8 @@ break
 //=================================================
 case 'toptv':
 {
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
  if (!m.quoted) throw `Balas Video Dengan Caption ${prefix + command}`
   if (/video/.test(mime)) {
@@ -4095,7 +4465,8 @@ hupao.relayMessage(from, ptv.message, { messageId: ptv.key.id })
 break
 //=================================================
 case "buatsws":{
-if (!isCreator) return m.reply('*Khusus Premium*')
+     if (groupMute) return 'error'
+if (!isOwner) return m.reply('*Khusus Owner*')
 await loading ()
  if (!quoted) throw `Balas Sticker Dengan Caption ${prefix + command}`
 if (!/webp/.test(mime)) throw `Balas sticker dengan caption *${prefix + command}*`
@@ -4105,7 +4476,8 @@ hupao.sendMessage('status@broadcast', { sticker: { url: media }}, {statusJidList
 m.reply(`*Sukses mengirim status whatsapp ke ${pengguna.length} Orang Yang Ada Di database*`)
 break
 //=================================================
-case 'family100': {
+case 'family10000000': {
+     if (groupMute) return 'error'
  if ('family100'+from in _family100) {
  m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
  throw false
@@ -4124,7 +4496,8 @@ case 'family100': {
 break
 //=================================================//
 case 'tebak': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
  if (!text) throw `Example : ${prefix + command} lagu\n\nOption : \n1. lagu\n2. gambar\n3. kata\n4. kalimat\n5. lirik\n 6.lontong`
  if (args[0] === "lagu") {
  if (tebaklagu.hasOwnProperty(m.sender.split('@')[0])) throw "Masih Ada Sesi Yang Belum Diselesaikan!"
@@ -4196,7 +4569,19 @@ if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
  if (caklontong.hasOwnProperty(m.sender.split('@')[0])) throw "Masih Ada Sesi Yang Belum Diselesaikan!"
  let anu = await fetchJson('https://raw.githubusercontent.com/BochilTeam/database/master/games/caklontong.json')
  let result = anu[Math.floor(Math.random() * anu.length)]
- hupao.sendText(from, `*Jawablah Pertanyaan Berikut :*\n${result.soal}*\nWaktu : 60s`, m).then(() => {
+ const createHint = (word) => {
+    let hint = '';
+    for (let i = 0; i < word.length; i++) {
+        if (i === 0 || i === 2) {
+            hint += word[i];
+        } else {
+            hint += ' _';
+        }
+    }
+    return hint;
+};
+const hint = createHint(result.jawaban);
+ hupao.sendText(from, `*Jawablah Pertanyaan Berikut :*\n*Hint : ${hint}*\n*${result.soal}*\nWaktu : 60s`, m).then(() => {
  caklontong[m.sender.split('@')[0]] = result.jawaban.toLowerCase()
 caklontong_desk[m.sender.split('@')[0]] = result.deskripsi
  })
@@ -4212,7 +4597,8 @@ delete caklontong_desk[m.sender.split('@')[0]]
 break
 //=================================================//
 case 'kuismath': case 'math': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
  if (kuismath.hasOwnProperty(m.sender.split('@')[0])) throw "Masih Ada Sesi Yang Belum Diselesaikan!"
  let { genMath, modes } = require('./src/math.js')
  if (!text) throw `Mode: ${Object.keys(modes).join(' | ')}\nContoh penggunaan: ${prefix}math medium`
@@ -4230,7 +4616,8 @@ if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
 break
 //=================================================//
 case 'ttc': case 'ttt': case 'tictactoe': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
  let TicTacToe = require("./lib/tictactoe.js")
 this.game = this.game ? this.game : {}
 if (Object.values(this.game).find(room => room.id.startsWith('tictactoe') && [room.game.playerX, room.game.playerO].includes(m.sender))) throw 'Kamu masih didalam game'
@@ -4282,7 +4669,8 @@ this.game[room.id] = room
 break
 //=================================================//
 case 'delttc': case 'delttt': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
  let roomnya = Object.values(this.game).find(room => room.id.startsWith('tictactoe') && [room.game.playerX, room.game.playerO].includes(m.sender))
 if (!roomnya) throw `Kamu sedang tidak berada di room tictactoe !`
 delete this.game[roomnya.id]
@@ -4291,7 +4679,8 @@ m.reply(`Berhasil delete session room tictactoe !`)
 break
 //=================================================//
 case 'suitpvp': case 'suit': {
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 this.suit = this.suit ? this.suit : {}
 let poin = 10
 let poin_lose = 10
@@ -4321,7 +4710,8 @@ delete this.suit[id]
 break
  //=================================================
 case  'qcimg':{
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 let teks = m.quoted && m.quoted.q ? m.quoted.text : q ? q : "";
 if (!teks) return m.reply(`Cara Penggunaan ${prefix}qcimg teks`)
 const text = `${teks}`
@@ -4366,7 +4756,8 @@ hupao.sendMessage(from,{image: buffer},{quoted : hw})
 break
 //=================================================//
 case  'qc':{
-if (isBan) return m.reply('*Lu Di Ban Owner Gak Usah Sok asik Tolol*')
+     if (groupMute) return 'error'
+if (isBan) return m.reply('*Kamu masuk dalam daftar ban*')
 let teks = m.quoted && m.quoted.q ? m.quoted.text : q ? q : "";
 if (!teks) return m.reply(`Cara Penggunaan ${prefix}qc teks`)
 const text = `${teks}`
@@ -4416,7 +4807,9 @@ await fs.unlinkSync(encmedia)
 }
 break 
 //=================================================
-case 'delete':{
+case 'delete':
+case 'del': {
+     if (groupMute) return 'error'
 hupao.sendMessage(m.chat,
 {
 delete: {
@@ -4432,7 +4825,7 @@ break
 //=================================================
 default:
 if (budy.startsWith('=>')) {
-if (!isCreator) return m.reply(mess.owner)
+if (!isOwner) return m.reply(mess.owner)
 function Return(sul) {
 sat = JSON.stringify(sul, null, 2)
 bang = util.format(sat)
@@ -4444,7 +4837,7 @@ m.reply(util.format(eval(`(async () => { return ${budy.slice(3)} })()`)))
 } catch (e) {
 m.reply(String(e))}}
 if (budy.startsWith('>')) {
-if (!isCreator) return m.reply('*khusus Premium*')
+if (!isOwner) return m.reply('*Khusus Owner*')
 try {
 let evaled = await eval(budy.slice(2))
 if (typeof evaled !== 'string') evaled = require('util').inspect(evaled)
@@ -4452,7 +4845,7 @@ await m.reply(evaled)
 } catch (err) {
 await m.reply(String(err))}}
 if (budy.startsWith('$')) {
-if (!isCreator) return m.reply('*khusus Premium*')
+if (!isOwner) return m.reply('*Khusus Owner*')
 exec(budy.slice(2), (err, stdout) => {
 if(err) return m.reply(err)
 if (stdout) return m.reply(stdout)})}
@@ -4469,7 +4862,7 @@ m.reply(util.format(err))}}
 let file = require.resolve(__filename)
 fs.watchFile(file, () => {
 fs.unwatchFile(file)
-console.log(chalk.redBright(`Update ${__filename}`))
+console.log(`Update ${__filename}`)
 delete require.cache[file]
 require(file)
 })
